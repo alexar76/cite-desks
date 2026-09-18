@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cite desks — reference evidence apps</title>
+<meta name="description" content="Five specialist evidence desks with watches, scheduled runs, cite packs and self-serve access on AIMarket rails." />
+<meta property="og:title" content="Cite desks — reference evidence apps" />
+<meta property="og:description" content="Fire, flood, PV, Nordic AIS, campus nowcast. Fork them. Do not pay us." />
+<meta property="og:url" content="https://desk.modelmarket.dev/" />
+<meta name="theme-color" content="#12151c" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2312151c'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%233dd6c6'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="fonts/fonts.css" />
+<style>
+:root {
+  --bg: #12151c;
+  --bone: #eef3f6;
+  --dim: #b7c4cc;
+  --muted: #7d8b94;
+  --line: rgba(238,243,246,.1);
+  --accent: #3dd6c6;
+  --ember: #e85d04;
+  --gold: #f0b429;
+  --sea: #5b8def;
+  --soil: #c4a574;
+  --serif: "Fraunces", "Times New Roman", serif;
+  --sans: "IBM Plex Sans", "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; color-scheme: dark; }
+body {
+  margin: 0; background: var(--bg); color: var(--bone);
+  font-family: var(--sans); letter-spacing: -0.011em; overflow-x: hidden;
+}
+body::before {
+  content: ""; pointer-events: none; position: fixed; inset: 0;
+  background:
+    radial-gradient(900px 480px at 82% 8%, rgba(61,214,198,.14), transparent 55%),
+    radial-gradient(640px 380px at 8% 0%, rgba(232,93,4,.1), transparent 48%);
+}
+body::after {
+  content: ""; pointer-events: none; position: fixed; inset: 0; z-index: 20; opacity: .024;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a { color: inherit; text-decoration: none; }
+.wrap { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 0 22px; }
+
+.demo {
+  position: sticky; top: 0; z-index: 40;
+  background: #e85d04;
+  color: #1a120e;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-size: 13px;
+  text-align: center;
+  padding: 12px 16px;
+}
+.demo span { font-weight: 500; letter-spacing: 0; text-transform: none; margin-left: .6em; }
+.demo a {
+  color: #1a120e;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: none;
+  margin-left: .75em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.demo a:hover { opacity: .82; }
+
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; padding: 18px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 10px; letter-spacing: .16em; text-transform: uppercase; font-size: 12px; font-weight: 600; }
+.mark { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--accent) 55%, #123); }
+.nav-links { display: flex; gap: 18px; color: var(--dim); font-size: 13px; align-items: center; }
+.nav-links a { position: relative; transition: color 180ms ease; }
+.nav-links a::after { content: ""; position: absolute; left: 0; right: 100%; bottom: -7px; height: 1px; background: var(--accent); transition: right 220ms ease; }
+.nav-links a:hover { color: var(--bone); }
+.nav-links a:hover::after { right: 0; }
+.lang { background: transparent; border: 1px solid var(--line); color: var(--bone); padding: 6px 8px; }
+h1 a { color: inherit; border-bottom: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+h1 a:hover { border-bottom-color: var(--accent); }
+
+.hero { min-height: 570px; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(330px, .8fr); gap: 36px; align-items: center; padding: 54px 0 46px; }
+.hero-copy { position: relative; z-index: 2; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(48px, 6.4vw, 78px); line-height: .92; letter-spacing: -.04em; margin: 14px 0 20px; text-wrap: balance; }
+h1 em { font-style: italic; color: var(--accent); }
+.lede { max-width: 62ch; color: var(--dim); font-size: 18px; line-height: 1.5; }
+.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 12px 18px; border: 1px solid rgba(238,243,246,.18); border-radius: 999px; background: rgba(255,255,255,.018); font-size: 14px; transition: transform 200ms ease, border-color 200ms ease, background 200ms ease; }
+.btn:hover { transform: translateY(-2px); border-color: rgba(238,243,246,.34); background: rgba(255,255,255,.055); }
+.btn-on { background: linear-gradient(135deg, #8ff1e7, var(--accent)); color: #0c1412; border-color: transparent; font-weight: 650; box-shadow: 0 14px 42px rgba(61,214,198,.2); }
+
+.family-scene { position: relative; min-height: 410px; isolation: isolate; }
+.family-scene::before { content: ""; position: absolute; inset: 4% 0; border-radius: 50%; background: radial-gradient(circle, rgba(61,214,198,.12), transparent 64%); filter: blur(8px); }
+.orbit { position: absolute; left: 50%; top: 50%; border: 1px solid var(--line); border-radius: 50%; transform: translate(-50%, -50%); }
+.orbit.one { width: 260px; height: 260px; animation: orbitSpin 28s linear infinite; }
+.orbit.two { width: 360px; height: 360px; border-style: dashed; opacity: .68; animation: orbitSpin 42s linear infinite reverse; }
+.orbit::after { content: ""; position: absolute; width: 8px; height: 8px; top: -4px; left: calc(50% - 4px); border-radius: 50%; background: var(--accent); box-shadow: 0 0 22px var(--accent); }
+.scene-core { position: absolute; left: 50%; top: 50%; width: 152px; height: 152px; transform: translate(-50%, -50%); display: grid; place-content: center; text-align: center; border-radius: 50%; background: radial-gradient(circle at 35% 25%, rgba(255,255,255,.1), rgba(10,15,20,.94) 60%); border: 1px solid rgba(61,214,198,.32); box-shadow: 0 0 0 18px rgba(61,214,198,.025), 0 30px 90px rgba(0,0,0,.45); }
+.scene-core span { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--muted); }
+.scene-core b { display: block; margin-top: 7px; font-family: var(--serif); font-size: 24px; font-weight: 400; color: var(--bone); }
+.desk-node { position: absolute; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: #0c1118; border: 1px solid var(--c); color: var(--c); font-family: var(--mono); font-size: 10px; letter-spacing: .08em; box-shadow: 0 0 28px color-mix(in srgb, var(--c) 22%, transparent); animation: nodeFloat 4.8s ease-in-out infinite; }
+.desk-node.n1 { --c: var(--ember); left: 8%; top: 23%; }
+.desk-node.n2 { --c: var(--accent); right: 2%; top: 19%; animation-delay: -.8s; }
+.desk-node.n3 { --c: var(--gold); left: 7%; bottom: 17%; animation-delay: -1.6s; }
+.desk-node.n4 { --c: var(--sea); right: 4%; bottom: 12%; animation-delay: -2.4s; }
+.desk-node.n5 { --c: var(--soil); left: calc(50% - 27px); bottom: 0; animation-delay: -3.2s; }
+.scene-proof { position: absolute; left: 50%; top: calc(50% + 94px); transform: translateX(-50%); width: max-content; font-family: var(--mono); color: var(--muted); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+
+.proof-strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.proof-strip div { padding: 20px 0; display: grid; gap: 4px; }
+.proof-strip div + div { border-left: 1px solid var(--line); padding-left: 26px; }
+.proof-strip b { font-family: var(--serif); font-size: 28px; font-weight: 400; color: var(--bone); }
+.proof-strip span { font-family: var(--mono); color: var(--muted); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+
+.grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; padding: 52px 0 72px; }
+.card {
+  position: relative; overflow: hidden; grid-column: span 2;
+  border: 1px solid var(--line); padding: 26px 24px 24px; min-height: 238px;
+  background: linear-gradient(150deg, rgba(255,255,255,.045), rgba(8,10,14,.36));
+  transition: transform 320ms cubic-bezier(.2,.8,.2,1), border-color 320ms ease, box-shadow 320ms ease;
+}
+.card:nth-child(n+4) { grid-column: span 3; }
+.card::before { content: ""; position: absolute; left: 0; top: 0; width: 46%; height: 1px; background: linear-gradient(90deg, var(--c), transparent); }
+.card::after { content: ""; position: absolute; width: 180px; height: 180px; right: -100px; top: -110px; border-radius: 50%; background: color-mix(in srgb, var(--c) 14%, transparent); filter: blur(28px); }
+.card:hover { transform: translateY(-7px); border-color: color-mix(in srgb, var(--c) 48%, transparent); box-shadow: 0 28px 80px rgba(0,0,0,.34); }
+.card .chip { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; }
+.card h2 { position: relative; z-index: 1; font-family: var(--serif); font-size: 34px; font-weight: 400; margin: 0 0 10px; }
+.card p { position: relative; z-index: 1; color: var(--dim); font-size: 14px; line-height: 1.55; margin: 0 0 20px; max-width: 42ch; }
+.card .go { position: absolute; left: 24px; bottom: 22px; z-index: 1; font-size: 12px; color: var(--c); font-family: var(--mono); }
+#emberline { --c: var(--ember); }
+#tideline { --c: var(--accent); }
+#solrecord { --c: var(--gold); }
+#seamark { --c: var(--sea); }
+#plinth { --c: var(--soil); }
+.card .chip { color: var(--c); }
+.card h2 { color: var(--c); }
+
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 8px 0 56px; }
+.split ul { margin: 8px 0 0; padding-left: 18px; color: var(--dim); line-height: 1.55; }
+h3 { font-family: var(--serif); font-size: 28px; font-weight: 400; margin: 8px 0; }
+
+.foot { border-top: 1px solid var(--line); padding: 22px 0 48px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.foot a { text-decoration: underline; text-underline-offset: 3px; }
+
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 720ms cubic-bezier(.2,.8,.2,1), transform 720ms cubic-bezier(.2,.8,.2,1); transition-delay: var(--delay, 0ms); }
+.reveal.on { opacity: 1; transform: translateY(0); }
+
+@keyframes orbitSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes nodeFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+  .family-scene { min-height: 390px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card, .card:nth-child(n+4) { grid-column: span 1; }
+  .card:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .split { grid-template-columns: 1fr; }
+  h1 { font-size: 42px; }
+  .hero { min-height: auto; padding-top: 44px; }
+  .family-scene { min-height: 340px; transform: scale(.9); margin: -24px -28px; }
+  .proof-strip { grid-template-columns: 1fr; }
+  .proof-strip div + div { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; }
+  .grid { grid-template-columns: 1fr; }
+  .card, .card:nth-child(n+4), .card:last-child { grid-column: auto; }
+  .nav-links a:not(:first-child) { display: none; }
+  .demo a { display: inline-block; margin: 6px 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => reg.unregister());
+      });
+      if (window.caches) {
+        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+      }
+    }
+  </script>
+  <div class="demo" role="status">
+    DEMO
+    <span data-i="demo">Not for sale. Checkout is closed. Live hub invokes are capped.</span>
+    <a href="https://github.com/alexar76/cite-desks" data-i="demo_repo">Fork · github.com/alexar76/cite-desks</a>
+  </div>
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="/"><span class="mark"></span> Cite desks</a>
+      <div class="nav-links">
+        <a href="#desks" data-i="nav_desks">Desks</a>
+        <a href="https://use.modelmarket.dev/">Use-cases</a>
+        <a href="https://atlas.modelmarket.dev/">ATLAS</a>
+        <a href="https://iot.modelmarket.dev/">GAIA</a>
+        <select class="lang" id="lang" aria-label="Language">
+          <option value="en">EN</option>
+          <option value="ru">RU</option>
+        </select>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="kicker" data-i="kicker">Five specialist products on AIMarket rails</div>
+        <h1 data-i="h1">Evidence desks built to <a href="https://github.com/alexar76/cite-desks"><em>fork</em></a>, brand, and sell.</h1>
+        <p class="lede" data-i="lede">Each desk turns attested ATLAS / GAIA data into a focused B2B workflow: watches, scheduled runs, cite packs and self-serve access. The public host stays a demo; operators supply their own origin, treasury and keys.</p>
+        <div class="hero-actions">
+          <a class="btn btn-on" href="https://github.com/alexar76/cite-desks" data-i="cta_fork">Fork on GitHub</a>
+          <a class="btn" href="https://emberlinedesk.com/" data-i="cta_ember">Explore Emberline</a>
+          <a class="btn" href="#desks" data-i="cta_use">See the desk family</a>
+        </div>
+      </div>
+      <div class="family-scene" aria-hidden="true">
+        <div class="orbit one"></div><div class="orbit two"></div>
+        <div class="scene-core"><span>ATTESTED</span><b>Cite pack</b></div>
+        <div class="desk-node n1">FIRE</div><div class="desk-node n2">FLOOD</div>
+        <div class="desk-node n3">PV</div><div class="desk-node n4">AIS</div>
+        <div class="desk-node n5">SITE</div>
+        <div class="scene-proof">ATLAS + GAIA · signed evidence</div>
+      </div>
+      <div class="proof-strip">
+        <div><b>05</b><span data-i="proof_products">specialist desks</span></div>
+        <div><b>02</b><span data-i="proof_rails">evidence rails</span></div>
+        <div><b>01</b><span data-i="proof_output">citeable output</span></div>
+      </div>
+    </header>
+
+    <section class="grid" id="desks">
+      <article class="card" id="emberline">
+        <div class="chip">Fire · US demo</div>
+        <h2>Emberline</h2>
+        <p data-i="ember_p">FIRMS / EFFIS points and bounded weather. Not a perimeter, not a forecast, not an evacuation order.</p>
+        <a class="go" href="https://emberlinedesk.com/">emberlinedesk.com →</a>
+      </article>
+      <article class="card" id="tideline">
+        <div class="chip">Flood · NL</div>
+        <h2>Tideline</h2>
+        <p data-i="tide_p">CAP warning and in-situ gauge, two lists. Not a flood model.</p>
+        <a class="go" href="https://tideline.modelmarket.dev/">tideline.modelmarket.dev →</a>
+      </article>
+      <article class="card" id="solrecord">
+        <div class="chip">PV · US</div>
+        <h2>Solrecord</h2>
+        <p data-i="sol_p">Retrospective irradiance record for a plant pin. Not a yield forecast.</p>
+        <a class="go" href="https://solrecord.modelmarket.dev/">solrecord.modelmarket.dev →</a>
+      </article>
+      <article class="card" id="seamark">
+        <div class="chip">AIS · NL</div>
+        <h2>Seamark</h2>
+        <p data-i="sea_p">Fintraffic and Kystverket, two lists. Not global AIS.</p>
+        <a class="go" href="https://seamark.modelmarket.dev/">seamark.modelmarket.dev →</a>
+      </article>
+      <article class="card" id="plinth">
+        <div class="chip">Campus · US</div>
+        <h2>Plinth</h2>
+        <p data-i="plinth_p">Named campus or colo nowcast. Weather, air, water as separate lists. Not a BMS.</p>
+        <a class="go" href="https://plinth.modelmarket.dev/">plinth.modelmarket.dev →</a>
+      </article>
+    </section>
+
+    <section class="split">
+      <div>
+        <div class="kicker" data-i="sell_k">We sell (in a fork)</div>
+        <h3 data-i="sell_h">A named box over time</h3>
+        <ul>
+          <li data-i="s1">Fail-closed briefs · empty LIVE stays empty</li>
+          <li data-i="s2">Cite pack: PDF, JSON, raw, SHA256</li>
+          <li data-i="s3">USDC on Base when you operate it</li>
+        </ul>
+      </div>
+      <div>
+        <div class="kicker" data-i="refuse_k">This demo refuses</div>
+        <h3 data-i="refuse_h">Checkout, SLA, invented geometry</h3>
+        <ul>
+          <li data-i="r1">No payment. No desk key for money.</li>
+          <li data-i="r2">Not NASA / EFFIS / NOAA. Not insurance.</li>
+          <li data-i="r3">SIM is never dressed as LIVE</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div data-i="foot">Powered by AIMarket ATLAS / GAIA. Desks do not operate satellites. Third-party pattern — copy it, put your own origin and key.</div>
+      <div>
+        <a href="https://github.com/alexar76/cite-desks">github.com/alexar76/cite-desks</a>
+        ·
+        <a href="https://modelmarket.dev/">modelmarket.dev</a>
+      </div>
+    </footer>
+  </div>
+<script>
+const I18N = {
+  en: {},
+  ru: {
+    demo: "Не продаётся. Касса закрыта. Живые вызовы хаба с лимитом.",
+    demo_repo: "Форк · github.com/alexar76/cite-desks",
+    nav_desks: "Дески",
+    kicker: "Пять специализированных продуктов на рельсах AIMarket",
+    h1: "Дески доказательств, готовые к <a href=\"https://github.com/alexar76/cite-desks\"><em>форку</em></a>, брендингу и продаже.",
+    lede: "Каждый деск превращает аттестованные данные ATLAS / GAIA в конкретный B2B-процесс: зоны наблюдения, запуски по расписанию, cite pack и самостоятельный доступ. Публичный хост остаётся демо; оператор подключает свой домен, казначейство и ключи.",
+    cta_fork: "Форк на GitHub",
+    cta_ember: "Посмотреть Emberline",
+    cta_use: "Все пять десков",
+    proof_products: "специализированных десков",
+    proof_rails: "рельса доказательств",
+    proof_output: "цитируемый результат",
+    ember_p: "Точки FIRMS / EFFIS и ограниченная погода. Не периметр, не прогноз, не эвакуация.",
+    tide_p: "CAP-предупреждение и датчик, два списка. Не модель паводка.",
+    sol_p: "Ретроспективная инсоляция точки станции. Не прогноз выработки.",
+    sea_p: "Fintraffic и Kystverket, два списка. Не глобальный AIS.",
+    plinth_p: "Nowcast площадки / colo. Погода, воздух, вода — разные списки. Не BMS.",
+    sell_k: "Что продаёт форк",
+    sell_h: "Именованный ящик во времени",
+    s1: "Fail-closed брифы · пустой LIVE остаётся пустым",
+    s2: "Cite pack: PDF, JSON, сырьё, SHA256",
+    s3: "USDC на Base, когда оперируете сами",
+    refuse_k: "Это демо отказывает",
+    refuse_h: "Касса, SLA, выдуманная геометрия",
+    r1: "Нет оплаты. Нет ключа стола за деньги.",
+    r2: "Не NASA / EFFIS / NOAA. Не страховка.",
+    r3: "SIM никогда не выдаётся за LIVE",
+    foot: "На ATLAS / GAIA. Столы не держат спутники. Сторонний паттерн — копируйте, свой origin и ключ."
+  }
+};
+const lang = document.getElementById("lang");
+const stored = localStorage.getItem("cite_desks_lang");
+if (stored && I18N[stored]) lang.value = stored;
+function apply() {
+  const pack = I18N[lang.value] || {};
+  document.documentElement.lang = lang.value;
+  document.querySelectorAll("[data-i]").forEach((el) => {
+    const key = el.getAttribute("data-i");
+    const val = pack[key];
+    if (!val) return;
+    el.innerHTML = val;
+  });
+  localStorage.setItem("cite_desks_lang", lang.value);
+}
+lang.addEventListener("change", apply);
+apply();
+
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const revealTargets = document.querySelectorAll(".proof-strip, .card, .split > div");
+  revealTargets.forEach((node, index) => {
+    node.classList.add("reveal");
+    node.style.setProperty("--delay", `${(index % 3) * 80}ms`);
+  });
+  const reveal = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("on");
+      reveal.unobserve(entry.target);
+    });
+  }, { threshold: .08, rootMargin: "0px 0px -7% 0px" });
+  revealTargets.forEach((node) => reveal.observe(node));
+}
+</script>
+</body>
+</html>

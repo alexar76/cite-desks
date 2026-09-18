@@ -1,0 +1,37 @@
+# Production overlay. Canonical origin is https://emberlinedesk.com (apex only, no www).
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+  api:
+    environment:
+      APP_ENV: production
+      DESK_MODE: ${DESK_MODE:-live}
+      PUBLIC_URL: ${PUBLIC_URL:-https://emberlinedesk.com}
+      DATABASE_URL: postgresql://emberline:${POSTGRES_PASSWORD}@db:5432/emberline
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      SEED_DEMO: "false"
+      HUB_MODE: ${HUB_MODE:-live}
+      HUB_API_KEY: ${HUB_API_KEY:-}
+      HUB_PAYMENT_CHANNEL: ${HUB_PAYMENT_CHANNEL:-}
+      HUB_PAYMENT_CHANNEL_SECRET: ${HUB_PAYMENT_CHANNEL_SECRET:-}
+      PAY_MINT_SECRET: ${PAY_MINT_SECRET:?PAY_MINT_SECRET is required}
+      PAY_MODE: live
+      PAY_BASE_RPC_URL: ${PAY_BASE_RPC_URL:-}
+      PAY_BASE_ADDRESS: ${PAY_BASE_ADDRESS:-}
+      PAY_USDC_ADDRESS: ${PAY_USDC_ADDRESS:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
+      PAY_BASE_CHAIN_ID: ${PAY_BASE_CHAIN_ID:-8453}
+      PAY_BASE_CONFIRMATIONS: ${PAY_BASE_CONFIRMATIONS:-2}
+      PAY_LATE_GRACE_HOURS: ${PAY_LATE_GRACE_HOURS:-24}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://emberlinedesk.com}
+      COOKIE_SECURE: "true"
+      OPS_SECRET: ${OPS_SECRET:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_MAILTO: ${VAPID_MAILTO:-mailto:desk@emberlinedesk.com}
+
+  web:
+    ports: !override
+      - "127.0.0.1:8088:80"

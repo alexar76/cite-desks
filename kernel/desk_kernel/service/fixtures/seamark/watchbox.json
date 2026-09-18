@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "capability_id": "atlas.watchbox.check@v1",
+  "live_match_count": 3,
+  "evidence": { "live_match_count": 3 },
+  "receipt": { "digest": "dd", "signature_status": "signed" }
+}

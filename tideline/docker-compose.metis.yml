@@ -1,0 +1,36 @@
+# Metis public demo — not docker-compose.prod.yml (that overlay is a merchant).
+# DESK_MODE=demo closes checkout. Fixture Hub + sample seed. Loopback-only web port
+# as a fallback; metis-nginx proxies via the tideline-web container on metisnet.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.metis.yml up --build -d
+services:
+  db:
+    container_name: tideline-db
+
+  api:
+    container_name: tideline-api
+    environment:
+      APP_ENV: production
+      DESK_MODE: demo
+      PUBLIC_URL: https://tideline.modelmarket.dev
+      SEED_DEMO: "true"
+      HUB_MODE: fixture
+      PAY_MODE: fixture
+      SCHEDULER_ENABLED: "false"
+      COOKIE_SECURE: "true"
+      CORS_ORIGINS: https://tideline.modelmarket.dev
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DATABASE_URL: postgresql://tideline:${POSTGRES_PASSWORD}@db:5432/tideline
+
+  web:
+    container_name: tideline-web
+    ports: !override
+      - "127.0.0.1:8091:80"
+    networks:
+      - default
+      - metisnet
+
+networks:
+  metisnet:
+    external: true

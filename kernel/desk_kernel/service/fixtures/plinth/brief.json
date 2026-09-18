@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "capability_id": "atlas.situation.brief@v1",
+  "sku": "atlas.situation.brief@v1",
+  "preset": "campus",
+  "summary": "campus brief: cited LIVE weather and air on a named colo bbox. Not a BMS.",
+  "drivers": ["1 LIVE weather nowcast", "1 LIVE air reading"],
+  "evidence": { "live_match_count": 2 },
+  "limitations": [
+    "Weather is a public nowcast, not a roof station.",
+    "Air is a public network reading, not indoor IAQ."
+  ],
+  "items": [
+    {
+      "id": "om-wx-ashburn",
+      "lat": 39.043,
+      "lon": -77.448,
+      "live": true,
+      "mode": "live",
+      "layer": "weather",
+      "headline": "Public weather nowcast — not a roof station",
+      "source": "Open-Meteo twin via GAIA",
+      "kind": "weather"
+    },
+    {
+      "id": "airnow-loudoun",
+      "lat": 39.036,
+      "lon": -77.462,
+      "live": true,
+      "mode": "live",
+      "layer": "air",
+      "headline": "Outdoor air reading — not indoor IAQ",
+      "source": "Public air network via GAIA",
+      "kind": "air"
+    }
+  ],
+  "receipt": { "digest": "pl-bb", "signature_status": "signed" }
+}

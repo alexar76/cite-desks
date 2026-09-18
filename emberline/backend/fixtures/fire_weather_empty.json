@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "capability_id": "atlas.fire.weather@v1",
+  "sku": "atlas.fire.weather@v1",
+  "artifact_type": "evidence_snapshot",
+  "summary": "Fire + weather evidence snapshot: 0 LIVE FIRMS detection(s).",
+  "drivers": [],
+  "evidence": {
+    "live_fire_detection_count": 0,
+    "returned_detection_count": 0,
+    "nearby_weather_available": false
+  },
+  "limitations": [
+    "FIRMS reports satellite thermal anomalies; detections are not confirmed incident perimeters."
+  ],
+  "hotspots": [
+    {
+      "id": "sim-only",
+      "lat": 37.5,
+      "lon": -121.0,
+      "live": false,
+      "mode": "sim",
+      "values": { "brightness_k": 400.0, "confidence": 80.0 }
+    }
+  ],
+  "weather": null,
+  "receipt": {
+    "algorithm": "sha256",
+    "digest": "empty-run-digest",
+    "signature_status": "signed",
+    "capability_id": "atlas.fire.weather@v1"
+  }
+}

@@ -1,0 +1,68 @@
+# Plinth — Site Evidence Desk
+# Named-site nowcast. Weather, air, water — separate lists. Not a BMS.
+# Own origin. Not an Emberline subdomain.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: plinth
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plinth}
+      POSTGRES_DB: plinth
+    volumes:
+      - plinth_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plinth -d plinth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: kernel/Dockerfile
+    environment:
+      DESK_ID: plinth
+      APP_ENV: ${APP_ENV:-development}
+      DESK_MODE: ${DESK_MODE:-live}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8094}
+      DATABASE_URL: postgresql://plinth:${POSTGRES_PASSWORD:-plinth}@db:5432/plinth
+      JWT_SECRET: ${JWT_SECRET:-cite-desk-dev-secret-change-me}
+      HUB_MODE: ${HUB_MODE:-fixture}
+      HUB_URL: ${HUB_URL:-https://modelmarket.dev}
+      HUB_API_KEY: ${HUB_API_KEY:-}
+      HUB_PAYMENT_CHANNEL: ${HUB_PAYMENT_CHANNEL:-}
+      HUB_PAYMENT_CHANNEL_SECRET: ${HUB_PAYMENT_CHANNEL_SECRET:-}
+      GAIA_HUB_URL: ${GAIA_HUB_URL:-}
+      GAIA_HUB_API_KEY: ${GAIA_HUB_API_KEY:-}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      SCHEDULER_ENABLED: "true"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8094}
+      PAY_MODE: ${PAY_MODE:-fixture}
+      PAY_MINT_SECRET: ${PAY_MINT_SECRET:-}
+      PAY_BASE_ADDRESS: ${PAY_BASE_ADDRESS:-0x1111111111111111111111111111111111111111}
+      PAY_BASE_RPC_URL: ${PAY_BASE_RPC_URL:-}
+      PAY_SCAN_INTERVAL_SECONDS: ${PAY_SCAN_INTERVAL_SECONDS:-20}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/public/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ..
+      dockerfile: kernel/web/Dockerfile
+    volumes:
+      - ../kernel/web:/usr/share/nginx/html:ro
+    ports:
+      - "8094:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  plinth_pg:

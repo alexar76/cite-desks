@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Emberline · Enterprise documentation</title>
+    <link href="/fonts/fonts.css" rel="stylesheet" />
+    <style>
+      :root { --bg:#1a1612; --elev:#2a231d; --bone:#f6efe6; --dim:#cbbba8; --muted:#8a7b6d; --line:rgba(244,236,224,.12); --ember:#e85d04; --gold:#f0b429; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--bone); font: 16px/1.55 "IBM Plex Sans", sans-serif; }
+      main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+      h1, h2, h3 { font-family: Fraunces, serif; font-weight: 400; letter-spacing: -.03em; }
+      h1 { font-size: 48px; line-height: 1; margin: 12px 0 20px; }
+      h2 { font-size: 28px; margin: 48px 0 12px; }
+      h3 { font-size: 20px; margin: 28px 0 8px; }
+      .kicker { color: var(--gold); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; }
+      a { color: #ffd7b0; }
+      p, li { color: var(--dim); }
+      code, pre { font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+      pre { background: var(--elev); padding: 16px; overflow: auto; border: 1px solid var(--line); }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-weight: 500; }
+      nav { display: flex; gap: 16px; flex-wrap: wrap; margin: 24px 0 8px; font-size: 13px; }
+      .back { color: var(--muted); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Emberline</a>
+      <div class="kicker">Enterprise pack</div>
+      <h1>Implementation and use</h1>
+      <p>ATLAS sells a snapshot. Emberline sells the desk: the watch, the fail-closed brief, the archive, and the commercial envelope around Hub SKUs.</p>
+      <nav>
+        <a href="#value">Value</a>
+        <a href="#implement">Implement</a>
+        <a href="#use">Use</a>
+        <a href="#api">API</a>
+        <a href="#ops">Operate</a>
+      </nav>
+
+      <h2 id="value">Value beyond ATLAS</h2>
+      <p>If you only need one invoke, buy <code>atlas.watchbox.check@v1</code> / <code>atlas.fire.weather@v1</code> and stop. Emberline is for a named box over time.</p>
+      <table>
+        <tr><th>Layer</th><th>What you get</th></tr>
+        <tr><td>Watch ops</td><td>Named bbox, 15/30/60 cadence, quiet hours, on_match vs always_brief.</td></tr>
+        <tr><td>Fail-closed brief</td><td>Empty LIVE stays empty. SIM never appears. Badges: not a perimeter, forecast, or evacuation order.</td></tr>
+        <tr><td>Archive</td><td>Citeable JSON, run-to-run delta, cite pack (PDF + SHA256), raw Hub payloads.</td></tr>
+        <tr><td>Receipt check</td><td>Ed25519 material verified when present (<code>emberline_verified</code>).</td></tr>
+        <tr><td>Delivery</td><td>HTTPS webhooks (HMAC <code>t=,v1=</code>), Slack, desk PWA push. Email is not a channel. SMTP is desk-only later.</td></tr>
+        <tr><td>Envelope</td><td>Plan caps, prepaid <code>emb_</code> desk keys, one Hub key for the org.</td></tr>
+      </table>
+      <p><code>always_brief</code> on a tight cadence will burn a Team plan. <code>on_match</code> is the default that can be profitable.</p>
+
+      <h2 id="implement">Implementation</h2>
+      <h3>Local</h3>
+      <pre>cp .env.example .env
+make up
+# http://localhost:8080</pre>
+      <p>Development compose may seed a demo owner. Production compose will not boot with that seed or the default JWT secret.</p>
+      <h3>Production</h3>
+      <pre>export JWT_SECRET=… POSTGRES_PASSWORD=… HUB_API_KEY=… PAY_MINT_SECRET=…
+export PUBLIC_URL=https://emberlinedesk.com
+export CORS_ORIGINS=https://emberlinedesk.com
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d</pre>
+      <p>Terminate TLS in front of nginx. Do not publish <code>:5432</code> or <code>:8000</code>. <code>HUB_MODE=live</code> refuses invokes without a key.</p>
+      <h3>Mint a prepaid key</h3>
+      <pre>POST /api/pay/mint
+X-Emberline-Mint: $PAY_MINT_SECRET
+{"plan":"solo","days":30,"payment_ref":"np_invoice_123"}</pre>
+      <p>Show <code>desk_key</code> once. Duplicate <code>payment_ref</code> → 409. Buyer redeems at login or <code>POST /api/auth/redeem</code>.</p>
+
+      <h2 id="use">Usage</h2>
+      <ol>
+        <li>Sign in with password or desk key.</li>
+        <li>Create a watch. Cap bbox at 40° × 30°. Prefer <code>on_match</code>.</li>
+        <li>Optional quiet hours <code>22-06</code>. Runs continue; alerts pause.</li>
+        <li>Optional Slack / HTTPS hooks — https and public DNS only. Copy the HMAC secret immediately.</li>
+        <li>Read briefs from Archive. A quiet run is not a safety guarantee.</li>
+      </ol>
+      <p>HTTPS alert header: <code>X-Emberline-Signature: t=&lt;unix&gt;,v1=&lt;hex&gt;</code> over <code>{ts}.{body}</code>.</p>
+
+      <h2 id="api">API surface</h2>
+      <p>Cookie <code>emberline_session</code> or <code>Authorization: Bearer</code>. Production hides OpenAPI.</p>
+      <table>
+        <tr><th>Path</th><th>Purpose</th></tr>
+        <tr><td>POST /api/auth/login | /redeem | /logout</td><td>Session</td></tr>
+        <tr><td>GET/POST /api/watches</td><td>List / create</td></tr>
+        <tr><td>POST /api/watches/{id}/run</td><td>402 if monthly cap hit</td></tr>
+        <tr><td>GET /api/briefs/{id}</td><td>Citeable brief (auth)</td></tr>
+        <tr><td>GET /api/public/briefs/{token}</td><td>Unlisted share; token ≠ id</td></tr>
+        <tr><td>GET /api/billing/usage</td><td>Meter, not a charge</td></tr>
+        <tr><td>GET /api/push/status</td><td>VAPID public key + whether this session subscribed</td></tr>
+        <tr><td>POST /api/pay/mint</td><td>Operator mint</td></tr>
+      </table>
+
+      <h2 id="ops">Operations</h2>
+      <ul>
+        <li>Scheduler every 5 minutes; process lock + Postgres advisory lock 87421001.</li>
+        <li>Backup volume <code>emberline_pg</code> — the archive is the product.</li>
+        <li>Email is not a delivery channel. SMTP is desk-only (named-seat mail later). Alerts: app UI, PWA push, Slack, HTTPS webhooks.</li>
+        <li>Never invent a perimeter during an outage. Publish <code>no_live_evidence</code> or nothing.</li>
+      </ul>
+      <p>Markdown sources live in the repository under <code>docs/enterprise/</code>.</p>
+    </main>
+  </body>
+</html>

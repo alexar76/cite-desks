@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: emberline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-emberline}
+      POSTGRES_DB: emberline
+    volumes:
+      - emberline_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emberline -d emberline"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: emberline/backend/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DESK_MODE: ${DESK_MODE:-live}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      DATABASE_URL: postgresql://emberline:${POSTGRES_PASSWORD:-emberline}@db:5432/emberline
+      JWT_SECRET: ${JWT_SECRET:-emberline-dev-secret-change-me}
+      HUB_MODE: ${HUB_MODE:-fixture}
+      HUB_URL: ${HUB_URL:-https://modelmarket.dev}
+      HUB_API_KEY: ${HUB_API_KEY:-}
+      HUB_PAYMENT_CHANNEL: ${HUB_PAYMENT_CHANNEL:-}
+      HUB_PAYMENT_CHANNEL_SECRET: ${HUB_PAYMENT_CHANNEL_SECRET:-}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      SCHEDULER_ENABLED: "true"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      PAY_MINT_SECRET: ${PAY_MINT_SECRET:-}
+      PAY_MODE: ${PAY_MODE:-fixture}
+      PAY_BASE_RPC_URL: ${PAY_BASE_RPC_URL:-}
+      PAY_BASE_ADDRESS: ${PAY_BASE_ADDRESS:-0x1111111111111111111111111111111111111111}
+      PAY_USDC_ADDRESS: ${PAY_USDC_ADDRESS:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
+      PAY_BASE_CHAIN_ID: ${PAY_BASE_CHAIN_ID:-8453}
+      PAY_BASE_CONFIRMATIONS: ${PAY_BASE_CONFIRMATIONS:-2}
+      PAY_LATE_GRACE_HOURS: ${PAY_LATE_GRACE_HOURS:-24}
+      OPS_SECRET: ${OPS_SECRET:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_MAILTO: ${VAPID_MAILTO:-mailto:desk@emberlinedesk.com}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/public/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  emberline_pg:

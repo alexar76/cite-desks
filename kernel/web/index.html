@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cite desk</title>
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link href="/fonts/fonts.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="demo-banner" class="demo-banner" hidden role="status">DEMO <span>Not for sale. Checkout is closed.</span> <a class="demo-repo" href="https://github.com/alexar76/cite-desks">Fork · github.com/alexar76/cite-desks</a></div>
+  <nav class="site-nav">
+    <a class="brand" href="/" data-nav><span class="brand-mark"></span><span id="brand-name">Cite desk</span></a>
+    <div class="nav-links">
+      <a href="/sample" data-nav data-i="nav_sample">Sample</a>
+      <a href="/guide" data-nav data-i="nav_guide">Guide</a>
+      <a href="/press" data-nav data-i="nav_press">Press</a>
+      <a href="/legal" data-nav data-i="nav_legal">Terms</a>
+      <a href="/status" data-nav data-i="nav_status">Status</a>
+      <a href="/#desk" data-nav data-i="cta_desk">Desk</a>
+      <label class="lang">
+        <span class="sr" data-i="lang_label">Language</span>
+        <select id="lang" aria-label="Language"></select>
+      </label>
+    </div>
+  </nav>
+
+  <div id="view-home">
+    <header class="hero-cinematic">
+      <div class="hero-copy">
+        <div class="kicker" id="kicker"></div>
+        <h1><span id="hero-title"></span><br /><em id="hero-em"></em></h1>
+        <p class="lede" id="lede"></p>
+        <div class="hero-actions">
+          <a class="btn btn-accent" href="/sample" data-nav data-i="cta_sample">Sample brief</a>
+          <a class="btn" href="/#desk" data-nav data-i="cta_desk">Open the desk</a>
+        </div>
+        <div class="hero-meta">
+          <div><b data-i="meta_fail">Fail-closed</b><span data-i="meta_fail_p">empty LIVE stays empty</span></div>
+          <div><b data-i="meta_cite">Cite pack</b><span data-i="meta_cite_p">PDF · JSON · SHA256</span></div>
+          <div><b data-i="meta_box">Named box</b><span data-i="meta_box_p">a person owns it</span></div>
+        </div>
+        <p class="region" id="region"></p>
+        <div class="badges" id="badges"></div>
+      </div>
+      <div class="scene-stage" aria-hidden="true">
+        <canvas id="desk-scene"></canvas>
+        <div class="scene-hud" id="scene-hud"></div>
+        <div class="scene-caption" id="scene-caption"></div>
+      </div>
+    </header>
+
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track" id="ticker"></div>
+    </div>
+
+    <section class="section split-claim">
+      <div>
+        <div class="kicker" data-i="sell_kicker">We sell</div>
+        <ul id="sell-list"></ul>
+      </div>
+      <div>
+        <div class="kicker" data-i="refuse_kicker">We refuse</div>
+        <ul id="refuse-list"></ul>
+      </div>
+    </section>
+
+    <section class="section" id="beyond">
+      <div class="kicker" data-i="beyond_kicker">Why a desk</div>
+      <h2 id="beyond-h2"></h2>
+      <p class="lede" id="beyond-sub"></p>
+      <div class="grid-3" id="beyond-cards"></div>
+    </section>
+
+    <section class="section" id="product">
+      <div class="kicker" data-i="product_kicker">The product</div>
+      <h2><span id="product-h2-a"></span><br /><span id="product-h2-b"></span></h2>
+      <p class="lede" id="product-sub"></p>
+      <div class="grid-3" id="product-cards"></div>
+    </section>
+
+    <section class="section" id="evidence">
+      <div class="kicker" data-i="sample">Sample brief</div>
+      <article class="paper" id="sample"></article>
+      <p><a class="btn" id="sample-pack" href="/api/public/sample-cite-pack" data-i="download_pack">Download sample cite pack</a></p>
+    </section>
+
+    <section class="section" id="buy">
+      <div class="kicker" data-i="pay_kicker">Prepaid access</div>
+      <p class="lede" data-i="pay_lede"></p>
+      <div class="plans" id="plans"></div>
+      <p id="pay-closed" class="muted" hidden></p>
+      <article class="paper checkout" id="checkout" hidden>
+        <div class="meta" id="ck-number"></div>
+        <h3 id="ck-state"></h3>
+        <div id="ck-instructions">
+          <p class="ck-amount"><span data-i="pay_amount">Send exactly</span>
+            <strong class="mono" id="ck-amount"></strong> USDC</p>
+          <p class="meta" data-i="pay_exact"></p>
+          <div class="ck-field"><span data-i="pay_to">To this address on Base</span>
+            <code id="ck-to"></code></div>
+        </div>
+        <p class="ck-links">
+          <a class="btn btn-accent" id="ck-wallet" href="#" data-i="pay_wallet">Open in wallet</a>
+          <a class="btn" id="ck-explorer" href="#" target="_blank" rel="noopener" data-i="pay_explorer">Explorer</a>
+          <button class="btn" id="ck-simulate" hidden data-i="pay_simulate">Simulate</button>
+        </p>
+        <p class="meta" id="ck-expiry"></p>
+        <form id="ck-confirm" class="row">
+          <label><span data-i="pay_tx_label">Paste the transaction hash</span>
+            <input name="tx_hash" placeholder="0x…" size="30" /></label>
+          <button class="btn" type="submit" data-i="pay_confirm">Confirm now</button>
+        </form>
+        <div class="ck-field" id="ck-key-wrap" hidden><span data-i="pay_key">Desk key</span>
+          <code id="ck-key"></code></div>
+        <p id="ck-err" class="err"></p>
+      </article>
+    </section>
+
+    <section class="section" id="desk">
+      <div class="kicker" data-i="cta_desk">Desk</div>
+      <form id="login" class="row">
+        <label><span data-i="email">Email</span> <input name="email" type="email" required /></label>
+        <label><span data-i="password">Password</span> <input name="password" type="password" required /></label>
+        <button class="btn btn-accent" type="submit" data-i="sign_in">Sign in</button>
+        <button class="btn" type="button" id="logout" hidden data-i="sign_out">Sign out</button>
+      </form>
+      <form id="redeem" class="row">
+        <label><span data-i="redeem_label">Desk key</span> <input name="desk_key" placeholder="…" size="30" required /></label>
+        <button class="btn" type="submit" data-i="redeem">Redeem</button>
+      </form>
+      <p id="desk-err" class="err"></p>
+      <div id="workspace" hidden>
+        <h2 data-i="watches">Watches</h2>
+        <table><thead><tr><th></th><th></th><th></th><th></th></tr></thead><tbody id="watches"></tbody></table>
+        <h2 data-i="new_watch">New watch</h2>
+        <form id="new-watch" class="row"></form>
+        <pre id="run"></pre>
+        <h2 data-i="archive">Archive</h2>
+        <table><tbody id="archive"></tbody></table>
+      </div>
+    </section>
+  </div>
+
+  <main id="view-sample" hidden class="section">
+    <div class="kicker" data-i="nav_sample">Sample</div>
+    <h1 class="serif" data-i="sample">Sample brief</h1>
+    <article class="paper" id="sample-page"></article>
+    <p><a class="btn btn-accent" href="/api/public/sample-cite-pack" data-i="download_pack">Download sample cite pack</a></p>
+  </main>
+
+  <main id="view-press" hidden class="section legal">
+    <div class="kicker" data-i="press_kicker">Press kit</div>
+    <h1 class="serif" data-i="press_h1">In one paragraph</h1>
+    <p id="press-boilerplate"></p>
+    <p id="press-links"></p>
+    <h2 class="serif">Facts</h2>
+    <table class="table" id="press-facts"></table>
+    <div class="grid-2">
+      <div class="card"><h3>Do say</h3><ul id="press-do"></ul></div>
+      <div class="card"><h3>Do not say</h3><ul id="press-dont"></ul></div>
+    </div>
+  </main>
+
+  <main id="view-legal" hidden class="section legal">
+    <div class="kicker" data-i="legal_kicker">Draft terms</div>
+    <h1 class="serif" data-i="legal_h1">Terms</h1>
+    <p id="legal-p1"></p>
+    <p id="legal-p2"></p>
+    <p id="legal-strip-page"></p>
+  </main>
+
+  <main id="view-status" hidden class="section legal">
+    <div class="kicker" data-i="nav_status">Status</div>
+    <h1 class="serif" data-i="status_h1">Status</h1>
+    <article class="paper" id="status-body"></article>
+  </main>
+
+  <main id="view-brief" hidden class="section guide">
+    <h1 id="brief-title"></h1>
+    <p class="lede" id="brief-status"></p>
+    <article class="paper" id="brief-body"></article>
+  </main>
+
+  <main id="view-guide" hidden class="section guide">
+    <div class="kicker" data-i="nav_guide">Guide</div>
+    <h1 id="guide-title"></h1>
+    <p class="lede" id="guide-lede"></p>
+    <div id="guide-body"></div>
+  </main>
+
+  <footer class="site-footer">
+    <p id="legal-strip"></p>
+    <p id="footer-powered"></p>
+    <p>
+      <a id="mail" href="#"></a> · <span id="host"></span>
+      · <a href="/press" data-nav data-i="nav_press">Press</a>
+      · <a href="/legal" data-nav data-i="nav_legal">Terms</a>
+      · <a href="/status" data-nav data-i="nav_status">Status</a>
+    </p>
+  </footer>
+  <script type="module" src="/scene.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
