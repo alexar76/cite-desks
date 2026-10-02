@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "capability_id": "atlas.smoke.operations@v1",
+  "sku": "atlas.smoke.operations@v1",
+  "inside_smoke": true,
+  "operational_status": "elevated",
+  "summary": "Bay Area asset pin at 37.7700,-122.4200 is inside 1 of 12 2026-09-28 smoke polygon(s), worst covering density medium; PM2.5 42.0 µg/m³ at the same coordinate; operational status elevated.",
+  "drivers": [
+    "Exact HMS polygon containment (rings and holes), not centroid proximity",
+    "HMS analysis product date: 2026-09-28",
+    "Colocated Open-Meteo PM2.5 at the same coordinate"
+  ],
+  "smoke": [
+    {
+      "id": "hms-demo-1",
+      "density": "medium",
+      "product_date": "2026-09-28"
+    }
+  ],
+  "smoke_polygon_count": 1,
+  "hms_inventory_total": 12,
+  "hms_inventory_complete": true,
+  "hms_analysis_date": "2026-09-28",
+  "air_quality": {
+    "kind": "modeled_coordinate",
+    "lat": 37.77,
+    "lon": -122.42,
+    "values": {"pm2_5_ugm3": 42.0, "us_aqi": 117},
+    "units": {"pm2_5_ugm3": "µg/m³"},
+    "observed_at": "2026-09-28T18:00:00Z",
+    "source": "Open-Meteo",
+    "attribution": "Open-Meteo.com (CC BY 4.0)"
+  },
+  "limitations": [
+    "NOAA HMS density is qualitative and cloud/imagery limited; it is not measured PM2.5.",
+    "Containment was decided against the 2026-09-28 HMS analysis product, not a live satellite pass.",
+    "Open-Meteo air quality is modeled grid data at the coordinate, not an on-site regulatory monitor.",
+    "This evidence brief is for operational screening, not a medical, evacuation, or emergency order."
+  ],
+  "attribution": [
+    "NOAA/NESDIS Hazard Mapping System (HMS)",
+    "Air-quality data by Open-Meteo.com (CC BY 4.0)"
+  ],
+  "receipt": { "digest": "smoke-demo", "signature_status": "signed" }
+}

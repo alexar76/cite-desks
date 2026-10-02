@@ -1,0 +1,22 @@
+# Emberline public marketing. Desk, ops, and unlisted briefs stay out of the index.
+User-agent: *
+Allow: /
+Allow: /sample
+Allow: /request
+Allow: /press
+Allow: /legal
+Allow: /status
+Allow: /docs/enterprise/
+
+Disallow: /desk
+Disallow: /ops
+Disallow: /login
+Disallow: /pay
+Disallow: /watches
+Disallow: /archive
+Disallow: /billing
+Disallow: /briefs
+Disallow: /b/
+Disallow: /api/
+
+Sitemap: https://emberlinedesk.com/sitemap.xml

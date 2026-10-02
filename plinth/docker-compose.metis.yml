@@ -1,0 +1,36 @@
+# Metis public demo — not docker-compose.prod.yml (that overlay is a merchant).
+# DESK_MODE=demo closes checkout. Fixture Hub + sample seed. Loopback-only web port
+# as a fallback; metis-nginx proxies via the plinth-web container on metisnet.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.metis.yml up --build -d
+services:
+  db:
+    container_name: plinth-db
+
+  api:
+    container_name: plinth-api
+    environment:
+      APP_ENV: production
+      DESK_MODE: demo
+      PUBLIC_URL: https://plinth.modelmarket.dev
+      SEED_DEMO: "true"
+      HUB_MODE: fixture
+      PAY_MODE: fixture
+      SCHEDULER_ENABLED: "false"
+      COOKIE_SECURE: "true"
+      CORS_ORIGINS: https://plinth.modelmarket.dev
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DATABASE_URL: postgresql://plinth:${POSTGRES_PASSWORD}@db:5432/plinth
+
+  web:
+    container_name: plinth-web
+    ports: !override
+      - "127.0.0.1:8094:80"
+    networks:
+      - default
+      - metisnet
+
+networks:
+  metisnet:
+    external: true
