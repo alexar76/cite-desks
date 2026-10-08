@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "capability_id": "atlas.watchbox.check@v1",
+  "sku": "atlas.watchbox.check@v1",
+  "live_match_count": 2,
+  "evidence": { "live_match_count": 2 },
+  "matches": [
+    { "id": "nws-flood-thames", "lat": 51.41, "lon": -0.31, "live": true, "mode": "live", "layer": "flood", "headline": "Flood Warning Thames", "source": "NWS CAP flood warning (U.S. PD) / EA-style CAP analogue in fixture" }
+  ],
+  "receipt": { "digest": "aa", "signature_status": "signed" }
+}

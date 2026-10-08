@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "capability_id": "atlas.watchbox.check@v1",
+  "sku": "atlas.watchbox.check@v1",
+  "evaluated_at": "2026-08-16T15:54:00Z",
+  "watchbox_id": "ephemeral",
+  "layers": ["fire"],
+  "match_count": 0,
+  "live_match_count": 0,
+  "matches": [],
+  "receipt": {
+    "algorithm": "sha256",
+    "digest": "watchbox-empty-digest",
+    "signature_status": "signed",
+    "capability_id": "atlas.watchbox.check@v1"
+  }
+}
