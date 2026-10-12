@@ -1,0 +1,35 @@
+# Production overlay. Canonical origin is https://solrecorddesk.com (apex only).
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+  api:
+    environment:
+      DESK_ID: solrecord
+      APP_ENV: production
+      DESK_MODE: ${DESK_MODE:-live}
+      PUBLIC_URL: ${PUBLIC_URL:-https://solrecorddesk.com}
+      DATABASE_URL: postgresql://solrecord:${POSTGRES_PASSWORD}@db:5432/solrecord
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      SEED_DEMO: "false"
+      HUB_MODE: ${HUB_MODE:-live}
+      HUB_API_KEY: ${HUB_API_KEY:-}
+      HUB_PAYMENT_CHANNEL: ${HUB_PAYMENT_CHANNEL:-}
+      HUB_PAYMENT_CHANNEL_SECRET: ${HUB_PAYMENT_CHANNEL_SECRET:-}
+      PAY_MINT_SECRET: ${PAY_MINT_SECRET:?PAY_MINT_SECRET is required}
+      PAY_MODE: live
+      PAY_BASE_RPC_URL: ${PAY_BASE_RPC_URL:-}
+      # A real treasury, checked at boot: the desk refuses to start on the placeholder,
+      # because a quote nobody owns is worse than a closed checkout.
+      PAY_BASE_ADDRESS: ${PAY_BASE_ADDRESS:?PAY_BASE_ADDRESS is required}
+      PAY_BASE_CONFIRMATIONS: ${PAY_BASE_CONFIRMATIONS:-2}
+      # Settlement is unattended: this poll is what turns USDC into a desk key.
+      PAY_SCAN_INTERVAL_SECONDS: ${PAY_SCAN_INTERVAL_SECONDS:-20}
+      PAY_LATE_GRACE_HOURS: ${PAY_LATE_GRACE_HOURS:-24}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://solrecorddesk.com}
+      COOKIE_SECURE: "true"
+
+  web:
+    ports: !override
+      - "127.0.0.1:8092:80"

@@ -1,0 +1,7 @@
+node_modules
+**/__pycache__
+**/.venv
+**/*.db
+**/.pytest_cache
+emberline/frontend/node_modules
+emberline/frontend/dist

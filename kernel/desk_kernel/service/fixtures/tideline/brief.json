@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "capability_id": "atlas.situation.brief@v1",
+  "sku": "atlas.situation.brief@v1",
+  "summary": "Cited LIVE flood warning product plus in-situ river stage. Two lists. Not a flood model.",
+  "drivers": ["1 LIVE flood warning product", "1 LIVE river gauge"],
+  "evidence": { "live_warning_count": 1, "live_match_count": 2 },
+  "limitations": [
+    "A CAP warning is not an in-situ stage.",
+    "A river gauge is not a flood warning."
+  ],
+  "items": [
+    {
+      "id": "ea-flood-kingston",
+      "lat": 51.412,
+      "lon": -0.308,
+      "live": true,
+      "mode": "live",
+      "layer": "flood",
+      "headline": "Flood warning product (EA OGL) — not a gauge",
+      "source": "Environment Agency flood warning product (OGL v3)",
+      "kind": "flood_warning"
+    },
+    {
+      "id": "ea-kingston-01",
+      "lat": 51.410,
+      "lon": -0.307,
+      "live": true,
+      "mode": "live",
+      "layer": "river",
+      "headline": "Kingston stage/discharge in-situ",
+      "source": "Environment Agency Hydrology API in-situ (OGL v3)",
+      "kind": "river_gauge"
+    }
+  ],
+  "receipt": { "digest": "bb", "signature_status": "signed" }
+}

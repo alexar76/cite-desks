@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "capability_id": "gaia.ais.public.read@v1",
+  "sku": "gaia.ais.public.read@v1",
+  "summary": "Finnish public AIS snapshot (Fintraffic CC BY 4.0). Not global AIS.",
+  "evidence": { "live_vessel_count": 2 },
+  "limitations": [
+    "Fintraffic Digitraffic CC BY 4.0, Finnish waters only.",
+    "Not Kystverket, not GFW, not own-edge AIS."
+  ],
+  "items": [
+    {
+      "id": "ais-fi-001",
+      "lat": 60.15,
+      "lon": 24.95,
+      "live": true,
+      "mode": "live",
+      "kind": "ais",
+      "headline": "Helsinki approaches",
+      "source": "Fintraffic Digitraffic (CC BY 4.0)",
+      "attribution": "Fintraffic"
+    },
+    {
+      "id": "ais-fi-002",
+      "lat": 60.12,
+      "lon": 24.98,
+      "live": true,
+      "mode": "live",
+      "kind": "ais",
+      "headline": "Passenger vessel",
+      "source": "Fintraffic Digitraffic (CC BY 4.0)",
+      "attribution": "Fintraffic"
+    }
+  ],
+  "receipt": { "digest": "ee", "signature_status": "signed" }
+}

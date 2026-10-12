@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "capability_id": "atlas.pv.irradiance.record@v1",
+  "sku": "atlas.pv.irradiance.record@v1",
+  "record_kind": "retrospective_record_of_fact",
+  "summary": "Plant at 35.0000,-117.5000, record date 2026-09-01: all-sky 7.210 kWh/m²/day, 12.0% below clear-sky. Record of fact, not a yield forecast.",
+  "irradiance": {
+    "observation_date": "2026-09-01",
+    "all_sky_kwh_m2_day": 7.21,
+    "clear_sky_kwh_m2_day": 8.19,
+    "cloud_loss_pct": 12.0,
+    "distance_km": 12.4,
+    "source": "NASA POWER"
+  },
+  "aerosol": { "aerosol_optical_depth": 0.12, "source": "CAMS" },
+  "limitations": [
+    "NASA POWER daily irradiation is satellite-derived and published with a multi-day lag.",
+    "Not a pyranometer on the plant."
+  ],
+  "items": [
+    {
+      "id": "solar-cell-mojave",
+      "lat": 35.0,
+      "lon": -117.5,
+      "live": true,
+      "mode": "live",
+      "kind": "solar",
+      "headline": "NASA POWER cell",
+      "source": "NASA POWER"
+    }
+  ],
+  "receipt": { "digest": "cc", "signature_status": "signed" }
+}

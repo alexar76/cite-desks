@@ -1,0 +1,159 @@
+{
+  "ok": true,
+  "capability_id": "atlas.fire.weather@v1",
+  "sku": "atlas.fire.weather@v1",
+  "generated_at": "2026-08-16T15:54:07.289185+00:00",
+  "bbox": { "west": -125.0, "south": 32.0, "east": -114.0, "north": 42.0 },
+  "artifact_type": "evidence_snapshot",
+  "summary": "Fire + weather evidence snapshot: 152 LIVE FIRMS detection(s); brightest 367 K at 37.66,-121.38. This is source-attributed context, not a fire perimeter, forecast, risk rating, or evacuation order.",
+  "drivers": [
+    "24 LIVE FIRMS hotspot(s) in bbox (of 152 total)",
+    "nearest LIVE weather nws-ksfo @ 88 km (humidity=87.8, temp_c=15.0)"
+  ],
+  "evidence": {
+    "live_fire_detection_count": 152,
+    "returned_detection_count": 8,
+    "live_effis_count": 0,
+    "returned_effis_count": 0,
+    "nearby_weather_available": true
+  },
+  "limitations": [
+    "FIRMS reports satellite thermal anomalies; detections are not confirmed incident perimeters.",
+    "EFFIS current-fire polygons are Copernicus EMS / JRC products (CC BY 4.0), not FIRMS pixels.",
+    "Weather and optional air context are included only within their declared distance bounds.",
+    "Independent operational validation is required."
+  ],
+  "hotspots": [
+    {
+      "id": "firms-hs-ff01-376584_-1213797",
+      "lat": 37.6584,
+      "lon": -121.3797,
+      "live": true,
+      "mode": "live",
+      "source": "https://firms.modaps.eosdis.nasa.gov (NASA FIRMS VIIRS)",
+      "headline": "Fire 367 K",
+      "values": { "brightness_k": 367.0, "confidence": 90.0 },
+      "observed_at": "2026-08-15T20:25:00Z",
+      "satellite": "N20",
+      "frp_mw": 8.24
+    },
+    {
+      "id": "firms-hs-ff01-411407_-1236132",
+      "lat": 41.1407,
+      "lon": -123.6132,
+      "live": true,
+      "mode": "live",
+      "source": "https://firms.modaps.eosdis.nasa.gov (NASA FIRMS VIIRS)",
+      "headline": "Fire 354 K",
+      "values": { "brightness_k": 353.84, "confidence": 50.0 },
+      "observed_at": "2026-08-16T10:26:00Z",
+      "satellite": "N20",
+      "frp_mw": 5.23
+    },
+    {
+      "id": "firms-hs-ff01-362422_-1217151",
+      "lat": 36.2422,
+      "lon": -121.7151,
+      "live": true,
+      "mode": "live",
+      "source": "https://firms.modaps.eosdis.nasa.gov (NASA FIRMS VIIRS)",
+      "headline": "Fire 350 K",
+      "values": { "brightness_k": 349.64, "confidence": 50.0 },
+      "observed_at": "2026-08-15T20:25:00Z",
+      "satellite": "N20",
+      "frp_mw": 7.26
+    },
+    {
+      "id": "firms-hs-ff01-393681_-1216274",
+      "lat": 39.3681,
+      "lon": -121.6274,
+      "live": true,
+      "mode": "live",
+      "source": "https://firms.modaps.eosdis.nasa.gov (NASA FIRMS VIIRS)",
+      "headline": "Fire 345 K",
+      "values": { "brightness_k": 344.66, "confidence": 50.0 },
+      "observed_at": "2026-08-15T20:27:00Z",
+      "satellite": "N20",
+      "frp_mw": 17.81
+    },
+    {
+      "id": "firms-hs-ff01-324977_-1168362",
+      "lat": 32.4977,
+      "lon": -116.8362,
+      "live": true,
+      "mode": "live",
+      "source": "https://firms.modaps.eosdis.nasa.gov (NASA FIRMS VIIRS)",
+      "headline": "Fire 345 K",
+      "values": { "brightness_k": 344.64, "confidence": 50.0 },
+      "observed_at": "2026-08-16T10:28:00Z",
+      "satellite": "N20",
+      "frp_mw": 4.71
+    },
+    {
+      "id": "firms-hs-ff01-384477_-1219078",
+      "lat": 38.4477,
+      "lon": -121.9078,
+      "live": true,
+      "mode": "live",
+      "source": "https://firms.modaps.eosdis.nasa.gov (NASA FIRMS VIIRS)",
+      "headline": "Fire 334 K",
+      "values": { "brightness_k": 333.52, "confidence": 50.0 },
+      "observed_at": "2026-08-15T20:25:00Z",
+      "satellite": "N20",
+      "frp_mw": 3.13
+    },
+    {
+      "id": "sim-should-never-appear",
+      "lat": 37.0,
+      "lon": -120.0,
+      "live": false,
+      "mode": "sim",
+      "source": "fixture",
+      "headline": "SIM 999 K",
+      "values": { "brightness_k": 999.0, "confidence": 99.0 },
+      "observed_at": "2026-08-16T00:00:00Z",
+      "satellite": "SIM"
+    },
+    {
+      "id": "firms-hs-ff01-397995_-1175942",
+      "lat": 39.7995,
+      "lon": -117.5942,
+      "live": true,
+      "mode": "live",
+      "source": "https://firms.modaps.eosdis.nasa.gov (NASA FIRMS VIIRS)",
+      "headline": "Fire 321 K",
+      "values": { "brightness_k": 321.28, "confidence": 50.0 },
+      "observed_at": "2026-08-16T08:45:00Z",
+      "satellite": "N20",
+      "frp_mw": 2.19
+    }
+  ],
+  "hotspot_count": 152,
+  "weather": {
+    "id": "nws-ksfo",
+    "layer": "weather",
+    "place": "SFO Airport",
+    "lat": 37.6196,
+    "lon": -122.3748,
+    "live": true,
+    "mode": "live",
+    "source": "https://api.weather.gov (NOAA/NWS observations)",
+    "headline": "15 °C",
+    "values": { "temperature_c": 15.0, "humidity_pct": 87.8385, "pressure_hpa": 1020.3189 }
+  },
+  "weather_distance_km": 87.7,
+  "max_weather_km": 250.0,
+  "attribution": "NASA FIRMS VIIRS — cite NASA FIRMS / disclaimer",
+  "receipt": {
+    "algorithm": "sha256",
+    "digest": "113bd86f7001a902689352cf6346c2e272927bdb7eff52f5edc8289f8adf5c26",
+    "service": "atlas",
+    "version": "0.1.0",
+    "ts": "2026-08-16T15:54:07.289746+00:00",
+    "capability_id": "atlas.fire.weather@v1",
+    "signature_alg": "ed25519",
+    "signature_b64": "mnxpkoYb0veukx69rkiEpkx0ZG20UCKcwUve/CcGwg8BdfdhNu9DPRM8oTPdwTLC5xRz78OuqTHuS73dBMOmDQ==",
+    "public_key_b64": "p4dibtrb4RSgFvm8lF7xH6csSdpDp01XVVfhuiKfeBk=",
+    "signature_status": "signed"
+  }
+}

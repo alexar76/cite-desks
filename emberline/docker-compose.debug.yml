@@ -1,0 +1,9 @@
+# Optional host ports for local debugging. Do not use in production.
+#   docker compose -f docker-compose.yml -f docker-compose.debug.yml up
+services:
+  db:
+    ports:
+      - "5432:5432"
+  api:
+    ports:
+      - "8000:8000"
