@@ -562,11 +562,16 @@ def test_desks_sharing_a_treasury_never_quote_the_same_amount() -> None:
     """Desks keep separate invoice tables but may share PAY_BASE_ADDRESS: with the same
     plan prices they handed out the same lowest amounts, so one transfer settled one
     invoice on every desk."""
-    ids = ["tideline", "smokeproof", "ledgerline", "citeline", "kelp", "harbor"]
+    from desk_kernel.claim import CLAIMS
+
+    ids = list(CLAIMS)
     bands = [pay.salt_band(d) for d in ids]
     assert all(lo >= 1 and hi <= pay.SALT_MAX for lo, hi in bands)
-    lows = {d: lo for d, (lo, _hi) in zip(ids, bands)}
-    assert lows["tideline"] != lows["smokeproof"] or pay.salt_band("tideline") == pay.salt_band("smokeproof")
+    for index, (lo, hi) in enumerate(bands):
+        for other_lo, other_hi in bands[index + 1:]:
+            assert hi <= other_lo or other_hi <= lo
+    with pytest.raises(pay.PayUnavailable, match="namespace"):
+        pay.salt_band("unregistered-desk")
 
 
 def test_a_transfer_older_than_the_invoice_does_not_settle_it(client: TestClient) -> None:

@@ -20,8 +20,6 @@ right call then. Wiring it is the right call now.
 
 from __future__ import annotations
 
-import hashlib
-
 import logging
 import threading
 from datetime import datetime, timedelta, timezone
@@ -33,6 +31,7 @@ from desk_kernel import chain
 from desk_kernel.chain import USDC_DECIMALS, ChainConfig, Rpc, RpcError, Transfer, format_usdc
 from desk_kernel.demo import DEMO_CHECKOUT_CLOSED, is_demo
 from desk_kernel.ids import hash_desk_key, new_desk_key, new_id
+from desk_kernel.invoice_allocation import payment_salt_band, reserve_invoice_amount
 from desk_kernel.service.config import DUMMY_TREASURY, current_claim, get_settings
 from desk_kernel.service.models import BaseInvoice, DeskGrant
 from desk_kernel.service.plans import PLANS
@@ -238,9 +237,10 @@ SALT_BANDS = 10
 
 def salt_band(desk_id: str) -> tuple[int, int]:
     """[lo, hi) micro-amount salts for this desk: one of SALT_BANDS disjoint bands, by id."""
-    width = SALT_MAX // SALT_BANDS
-    band = int(hashlib.sha256((desk_id or "").encode("utf-8")).hexdigest(), 16) % SALT_BANDS
-    return band * width + 1, (band + 1) * width
+    try:
+        return payment_salt_band(desk_id)
+    except ValueError as error:
+        raise PayUnavailable(str(error)) from error
 
 
 def create_invoice(db: Session, *, plan: str, payment_method: str = "usdc_base") -> BaseInvoice:
@@ -251,20 +251,21 @@ def create_invoice(db: Session, *, plan: str, payment_method: str = "usdc_base")
         raise GrantError("only usdc_base is open")
     if not rail_enabled(settings):
         raise PayUnavailable(rail_closed_reason(settings) or "checkout is closed")
-    expire_stale(db)
-    now = datetime.now(timezone.utc)
-    invoice = BaseInvoice(
-        id=new_id("inv"),
-        plan=plan,
-        payment_method=payment_method,
-        days=30,
-        amount_raw=allocate_amount(db, plan),
-        status="pending",
-        pay_to=treasury(settings),
-        expires_at=now + timedelta(minutes=int(settings.pay_invoice_ttl_minutes)),
-    )
-    db.add(invoice)
-    db.commit()
+    with reserve_invoice_amount(db):
+        expire_stale(db)
+        now = datetime.now(timezone.utc)
+        invoice = BaseInvoice(
+            id=new_id("inv"),
+            plan=plan,
+            payment_method=payment_method,
+            days=30,
+            amount_raw=allocate_amount(db, plan),
+            status="pending",
+            pay_to=treasury(settings),
+            expires_at=now + timedelta(minutes=int(settings.pay_invoice_ttl_minutes)),
+        )
+        db.add(invoice)
+        db.commit()
     db.refresh(invoice)
     return invoice
 

@@ -330,6 +330,31 @@ def test_scan_settles_injected_transfer(client, db) -> None:
     assert invoice.status == "paid"
 
 
+def test_scan_rejects_unclaimed_transfer_from_before_invoice(client, db) -> None:
+    from app.basepay import scan_payments
+    from app.payfixture import get_fixture_rpc
+
+    created = client.post("/api/public/pay/orders", json={"plan": "solo"}).json()
+    invoice = db.get(BaseInvoice, created["id"])
+    rpc = get_fixture_rpc()
+    rpc.inject_usdc_transfer(token=USDC, pay_to=invoice.pay_to, amount_raw=invoice.amount_raw,
+                             timestamp=int((datetime.now(timezone.utc) - timedelta(hours=1)).timestamp()))
+    assert scan_payments(db, rpc=rpc) == 0
+    db.refresh(invoice)
+    assert invoice.status == "pending" and invoice.desk_key is None
+
+
+def test_emberline_amount_namespace_is_separate_from_all_sibling_desks(client) -> None:
+    from desk_kernel.claim import CLAIMS
+    from desk_kernel.invoice_allocation import payment_salt_band
+
+    created = client.post("/api/public/pay/orders", json={"plan": "solo"}).json()
+    salt = int(created["amount_raw"]) - 49_000000
+    for desk_id in CLAIMS:
+        lo, hi = payment_salt_band(desk_id)
+        assert (lo <= salt < hi) is (desk_id == "emberline")
+
+
 def test_expired_plan_blocks_new_watch(client, db) -> None:
     from datetime import datetime, timedelta, timezone
 

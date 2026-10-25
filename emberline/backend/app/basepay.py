@@ -40,6 +40,7 @@ from sqlalchemy import and_, case, or_
 from sqlalchemy.orm import Session
 
 from desk_kernel.demo import DEMO_CHECKOUT_CLOSED, is_demo
+from desk_kernel.invoice_allocation import payment_salt_band, reserve_invoice_amount
 
 from .config import get_settings
 from .grants import GrantError, mint_grant
@@ -310,7 +311,8 @@ def allocate_amount(db: Session, plan: str) -> int:
         int(row.amount_raw)
         for row in db.query(BaseInvoice).filter(_claimable_clause(now))
     }
-    for salt in range(1, SALT_MAX):
+    lo, hi = payment_salt_band("emberline")
+    for salt in range(lo, hi):
         raw = base + salt
         if raw not in taken:
             return raw
@@ -325,20 +327,21 @@ def create_invoice(db: Session, *, plan: str, payment_method: str = "usdc_base")
         raise RuntimeError("USDC Base rail is not configured")
     if plan not in PLANS:
         raise ValueError("unknown plan")
-    expire_stale(db)
-    now = datetime.now(timezone.utc)
-    invoice = BaseInvoice(
-        id=new_id("inv"),
-        plan=plan,
-        payment_method=payment_method,
-        days=30,
-        amount_raw=allocate_amount(db, plan),
-        status="pending",
-        pay_to=treasury(settings),
-        expires_at=now + timedelta(minutes=int(settings.pay_invoice_ttl_minutes)),
-    )
-    db.add(invoice)
-    db.commit()
+    with reserve_invoice_amount(db):
+        expire_stale(db)
+        now = datetime.now(timezone.utc)
+        invoice = BaseInvoice(
+            id=new_id("inv"),
+            plan=plan,
+            payment_method=payment_method,
+            days=30,
+            amount_raw=allocate_amount(db, plan),
+            status="pending",
+            pay_to=treasury(settings),
+            expires_at=now + timedelta(minutes=int(settings.pay_invoice_ttl_minutes)),
+        )
+        db.add(invoice)
+        db.commit()
     db.refresh(invoice)
     return invoice
 
@@ -558,6 +561,8 @@ def confirm_invoice(db: Session, invoice: BaseInvoice, tx_hash: str, rpc: Rpc | 
     hits = [row for row in transfers_from_receipt(receipt) if row.amount_raw == invoice.amount_raw]
     if not hits:
         raise ValueError("transaction does not pay this invoice")
+    if db.query(BaseInvoice).filter(BaseInvoice.tx_hash == hits[0].tx_hash).one_or_none():
+        raise ValueError("that transfer already settled an invoice")
     # The scan only ever reads a window ending at the chain head, so an old
     # transfer can only reach an invoice through a hand-supplied hash. Bound it
     # to the invoice's own life, or the grace window becomes a way to claim
@@ -585,6 +590,9 @@ def scan_payments(db: Session, rpc: Rpc | None = None) -> int:
     for transfer in fetch_transfers(from_block=start, to_block=settled_head, rpc=rpc):
         invoice = match_invoice(db, transfer)
         if invoice is None:
+            continue
+        paid_at = block_time(transfer.block_number, rpc)
+        if paid_at < _aware(invoice.created_at) - CLOCK_SLACK or paid_at > claim_deadline(invoice):
             continue
         settle(db, invoice, transfer)
         settled += 1
