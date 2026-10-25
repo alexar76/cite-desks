@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { renderToStaticMarkup } from "react-dom/server";
-import { StaticRouter } from "react-router-dom/server";
+import { StaticRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../lib/I18nProvider";
 import { Landing } from "../pages/Landing";

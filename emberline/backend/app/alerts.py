@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 
 from .security import new_id, sign_webhook
-from .webhooks import UnsafeWebhook, assert_safe_webhook_url
+from .webhooks import UnsafeWebhook, resolve_safe_webhook
 
 
 def deliver(
@@ -64,11 +65,31 @@ def deliver(
     return logs
 
 
+def _pinned_post(url: str, *, content: bytes, headers: dict[str, str]) -> httpx.Response:
+    """POST to the address the guard vetted, keeping the name for Host, SNI and the cert.
+
+    Checking the URL and then posting to it by name let httpx resolve it again: a name that
+    answered public for the check and 127.0.0.1 a moment later was posted to (DNS rebinding,
+    the class of Vulnetix GCVE-110-PYPI-2026-021946). Same delivery as the desk kernel's.
+    """
+    raw, ip = resolve_safe_webhook(url)
+    parsed = urlparse(raw)
+    try:
+        host = (parsed.hostname or "").encode("idna").decode("ascii")
+    except UnicodeError as exc:
+        raise UnsafeWebhook("webhook host is not a valid name") from exc
+    netloc = (f"[{ip}]" if ":" in ip else ip) + (f":{parsed.port}" if parsed.port else "")
+    target = urlunparse(parsed._replace(netloc=netloc))
+    host_header = host + (f":{parsed.port}" if parsed.port else "")
+    with httpx.Client(timeout=8.0, follow_redirects=False) as client:
+        return client.post(target, content=content, headers={**headers, "Host": host_header},
+                           extensions={"sni_hostname": host})
+
+
 def _post_json(url: str, payload: dict[str, Any], channel: str) -> dict[str, Any]:
     try:
-        assert_safe_webhook_url(url)
-        with httpx.Client(timeout=8.0, follow_redirects=False) as client:
-            response = client.post(url, json=payload)
+        response = _pinned_post(url, content=json.dumps(payload).encode(),
+                                headers={"Content-Type": "application/json"})
         return {
             "id": new_id("dlv"),
             "channel": channel,
@@ -83,9 +104,7 @@ def _post_json(url: str, payload: dict[str, Any], channel: str) -> dict[str, Any
 
 def _post_bytes(url: str, body: bytes, headers: dict[str, str], channel: str) -> dict[str, Any]:
     try:
-        assert_safe_webhook_url(url)
-        with httpx.Client(timeout=8.0, follow_redirects=False) as client:
-            response = client.post(url, content=body, headers=headers)
+        response = _pinned_post(url, content=body, headers=headers)
         return {
             "id": new_id("dlv"),
             "channel": channel,

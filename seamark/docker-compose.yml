@@ -65,7 +65,7 @@ services:
     volumes:
       - ../kernel/web:/usr/share/nginx/html:ro
     ports:
-      - "8093:80"
+      - "127.0.0.1:8093:80"
     depends_on:
       api:
         condition: service_healthy

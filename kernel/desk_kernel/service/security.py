@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -53,6 +54,17 @@ def create_token(user: User) -> str:
     )
 
 
+def _from_local_proxy(peer: str) -> bool:
+    """Could the TCP peer be our own reverse proxy (this host or its docker network)? Only
+    then are X-Real-IP / X-Forwarded-For the caller's: anyone reaching the port another way
+    writes them itself and gets a fresh rate-limit bucket per request."""
+    try:
+        addr = ipaddress.ip_address((peer or "").split("%")[0])
+    except ValueError:
+        return False
+    return addr.is_loopback or addr.is_private or addr.is_link_local
+
+
 def client_ip(request: Request) -> str:
     """The visitor address the rate limiters bucket on.
 
@@ -61,8 +73,9 @@ def client_ip(request: Request) -> str:
     entry is whatever the caller chose to send, so keying limits on it let one client
     present a fresh address per request; the hop our own nginx appended cannot be forged.
     """
+    peer = request.client.host if request.client else ""
     chain = [p.strip() for p in (request.headers.get("x-forwarded-for") or "").split(",") if p.strip()]
-    if chain:
+    if chain and _from_local_proxy(peer):
         hops = max(0, get_settings().trusted_proxy_hops)
         idx = len(chain) - 1 - hops
         return chain[max(0, min(idx, len(chain) - 1))][:64]
