@@ -50,6 +50,7 @@ export type Invoice = {
   confirmations_required: number;
   /** True once the quote has lapsed but a transfer can still buy the desk. */
   claimable: boolean;
+  manual_reconciliation_needed?: boolean;
   claim_deadline: string;
   late_grace_hours: number;
   late: boolean;

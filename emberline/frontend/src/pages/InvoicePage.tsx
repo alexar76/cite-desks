@@ -140,6 +140,9 @@ export function InvoicePage() {
                 Download PDF
               </a>
             </div>
+            {invoice.manual_reconciliation_needed && (
+              <p role="status">This legacy quote needs operator reconciliation. Do not send another payment; keep your invoice and transaction hash.</p>
+            )}
             {invoice.claimable && (
               <div className="hero-actions" style={{ marginTop: 12 }}>
                 <button className="btn btn-ember" type="button" onClick={() => void walletPay()} disabled={busy}>

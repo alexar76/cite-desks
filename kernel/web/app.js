@@ -196,6 +196,7 @@ function stamp(iso) {
 
 function paintInvoice(invoice) {
   const paid = invoice.status === "paid";
+  const manual = Boolean(invoice.manual_reconciliation_needed);
   const box = $("checkout");
   box.hidden = false;
   $("ck-number").textContent = `${invoice.number} · ${invoice.plan_name} · ${invoice.days} days`;
@@ -205,14 +206,16 @@ function paintInvoice(invoice) {
   $("ck-explorer").href = invoice.explorer_tx || invoice.explorer_address;
   // A settled invoice must stop asking to be paid. Leaving "send exactly …" and a wallet
   // link on a paid card is how a buyer pays twice.
-  $("ck-instructions").hidden = paid;
-  $("ck-wallet").hidden = paid;
-  $("ck-simulate").hidden = !invoice.fixture || paid;
-  $("ck-confirm").hidden = paid;
+  $("ck-instructions").hidden = paid || manual;
+  $("ck-wallet").hidden = paid || manual;
+  $("ck-simulate").hidden = !invoice.fixture || paid || manual;
+  $("ck-confirm").hidden = paid || manual;
   $("ck-expiry").textContent = paid
     ? [stamp(invoice.paid_at), invoice.late ? ui.pay_late : ""].filter(Boolean).join(" · ")
     : `${ui.pay_expires || "Quote lapses"} ${stamp(invoice.expires_at)}`;
-  $("ck-state").textContent = paid ? (ui.pay_paid || "Paid.") : (ui.pay_waiting || "Waiting for your transfer.");
+  $("ck-state").textContent = manual
+    ? "This legacy quote needs operator reconciliation. Do not send another payment; keep your invoice and transaction hash."
+    : paid ? (ui.pay_paid || "Paid.") : (ui.pay_waiting || "Waiting for your transfer.");
   if (invoice.desk_key) {
     $("ck-key").textContent = invoice.desk_key;
     $("ck-key-wrap").hidden = false;

@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session
 
 _allocation_lock = RLock()
 _POSTGRES_LOCK = 0x43495445504159
-PAYMENT_SALT_MAX = 10_000
+PAYMENT_SALT_MAX = 20_000
 PAYMENT_SALT_BANDS = 10
+_LEGACY_SALT_END = 10_000
 _DESK_BANDS = {"solrecord": 0, "smokeproof": 1, "seamark": 2,
                "plinth": 3, "tideline": 4, "emberline": 5}
 
@@ -24,9 +25,17 @@ def payment_salt_band(desk_id: str) -> tuple[int, int]:
     """Explicit namespaces: hashing six IDs into ten buckets causes collisions."""
     if desk_id not in _DESK_BANDS:
         raise ValueError("desk has no reserved payment amount namespace")
-    width = PAYMENT_SALT_MAX // PAYMENT_SALT_BANDS
+    # The first 9,999 raw units were used by overlapping legacy namespaces.
+    # New quotes must not collide with still-payable legacy invoices on any desk.
+    width = (PAYMENT_SALT_MAX - _LEGACY_SALT_END) // PAYMENT_SALT_BANDS
     band = _DESK_BANDS[desk_id]
-    return band * width + 1, (band + 1) * width
+    return _LEGACY_SALT_END + band * width + 1, _LEGACY_SALT_END + (band + 1) * width
+
+
+def quote_needs_reconciliation(amount_raw: int, desk_id: str) -> bool:
+    """Old overlapping quotes cannot safely grant access from an amount alone."""
+    lo, hi = payment_salt_band(desk_id)
+    return not lo <= int(amount_raw) % 1_000_000 < hi
 
 
 @contextmanager

@@ -567,11 +567,44 @@ def test_desks_sharing_a_treasury_never_quote_the_same_amount() -> None:
     ids = list(CLAIMS)
     bands = [pay.salt_band(d) for d in ids]
     assert all(lo >= 1 and hi <= pay.SALT_MAX for lo, hi in bands)
+    assert all(lo >= 10_001 for lo, _ in bands), "new quotes must not reuse legacy amounts"
     for index, (lo, hi) in enumerate(bands):
         for other_lo, other_hi in bands[index + 1:]:
             assert hi <= other_lo or other_hi <= lo
     with pytest.raises(pay.PayUnavailable, match="namespace"):
         pay.salt_band("unregistered-desk")
+
+
+def test_one_legacy_transfer_cannot_automatically_credit_two_desks(client, monkeypatch):
+    from sqlalchemy.orm import Session
+    from desk_kernel.service.db import make_engine
+
+    cfg = get_settings()
+    rpc = get_fixture_rpc()
+    legacy_amount = 49_008001  # both old plinth and old tideline used band 8
+    transfer = rpc.inject_usdc_transfer(token=cfg.pay_usdc_address,
+        pay_to=pay.treasury(cfg), amount_raw=legacy_amount)
+    for desk_id in ("tideline", "plinth"):
+        isolated_engine = make_engine("sqlite://")
+        Base.metadata.create_all(isolated_engine)
+        monkeypatch.setattr(pay, "get_settings", lambda desk=desk_id: cfg.model_copy(update={"desk_id": desk}))
+        with Session(isolated_engine) as db:
+            invoice = BaseInvoice(id="inv_legacy_" + desk_id, plan="solo", days=30,
+                amount_raw=legacy_amount, status="pending", pay_to=pay.treasury(cfg),
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+            db.add(invoice)
+            db.commit()
+            assert pay.scan_payments(db, rpc=rpc) == 0
+            with pytest.raises(ValueError, match="operator reconciliation"):
+                pay.confirm_invoice(db, invoice, transfer.tx_hash, rpc=rpc)
+            with pytest.raises(ValueError, match="operator reconciliation"):
+                pay.settle(db, invoice, transfer)
+            db.refresh(invoice)
+            assert invoice.amount_raw == legacy_amount and invoice.status == "pending"
+            assert db.query(DeskGrant).count() == 0
+            view = pay.invoice_view(invoice, db)
+            assert view["manual_reconciliation_needed"] is True
+            assert view["claimable"] is False and view["eip681"] == ""
 
 
 def test_a_transfer_older_than_the_invoice_does_not_settle_it(client: TestClient) -> None:

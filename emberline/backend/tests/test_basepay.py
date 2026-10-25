@@ -244,7 +244,7 @@ def test_confirm_requires_exact_usdc_and_confirmations(db) -> None:
         id=new_id("inv"),
         plan="team",
         days=30,
-        amount_raw=149_000088,
+        amount_raw=149_015088,
         status="pending",
         pay_to=TREASURY,
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
@@ -259,7 +259,7 @@ def test_confirm_requires_exact_usdc_and_confirmations(db) -> None:
             {
                 "address": USDC,
                 "topics": [TRANSFER, "0x" + "aa" * 32, topic_address(TREASURY)],
-                "data": hex(149_000088),
+                "data": hex(149_015088),
                 "transactionHash": tx,
                 "blockNumber": hex(50),
                 "logIndex": "0x0",
@@ -353,6 +353,31 @@ def test_emberline_amount_namespace_is_separate_from_all_sibling_desks(client) -
     for desk_id in CLAIMS:
         lo, hi = payment_salt_band(desk_id)
         assert (lo <= salt < hi) is (desk_id == "emberline")
+
+
+def test_legacy_invoice_is_preserved_without_automatic_access_grant(client, db) -> None:
+    import pytest
+    from app import basepay
+    from app.models import DeskGrant
+    from app.payfixture import get_fixture_rpc
+
+    invoice = BaseInvoice(id=new_id("inv"), plan="solo", days=30, amount_raw=49_008001,
+        status="pending", pay_to=TREASURY, expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+    db.add(invoice)
+    db.commit()
+    rpc = get_fixture_rpc()
+    transfer = rpc.inject_usdc_transfer(token=USDC, pay_to=TREASURY, amount_raw=invoice.amount_raw)
+    assert basepay.scan_payments(db, rpc=rpc) == 0
+    with pytest.raises(ValueError, match="operator reconciliation"):
+        basepay.confirm_invoice(db, invoice, transfer.tx_hash, rpc=rpc)
+    with pytest.raises(ValueError, match="operator reconciliation"):
+        basepay.settle(db, invoice, transfer)
+    db.refresh(invoice)
+    assert invoice.status == "pending" and invoice.amount_raw == 49_008001
+    assert invoice.desk_key is None and db.query(DeskGrant).count() == 0
+    view = client.get(f"/api/public/pay/invoices/{invoice.id}").json()
+    assert view["manual_reconciliation_needed"] is True
+    assert view["claimable"] is False and view["eip681"] == ""
 
 
 def test_expired_plan_blocks_new_watch(client, db) -> None:
@@ -476,7 +501,7 @@ def test_confirm_refuses_a_transfer_older_than_the_invoice(db) -> None:
         id=new_id("inv"),
         plan="team",
         days=30,
-        amount_raw=149_000091,
+        amount_raw=149_015091,
         status="pending",
         pay_to=TREASURY,
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
@@ -491,7 +516,7 @@ def test_confirm_refuses_a_transfer_older_than_the_invoice(db) -> None:
             {
                 "address": USDC,
                 "topics": [TRANSFER, "0x" + "aa" * 32, topic_address(TREASURY)],
-                "data": hex(149_000091),
+                "data": hex(149_015091),
                 "transactionHash": tx,
                 "blockNumber": hex(50),
                 "logIndex": "0x0",
@@ -518,7 +543,7 @@ def test_confirm_accepts_a_late_transfer_but_not_one_past_the_grace(db) -> None:
         id=new_id("inv"),
         plan="team",
         days=30,
-        amount_raw=149_000092,
+        amount_raw=149_015092,
         status="pending",
         pay_to=TREASURY,
         created_at=now - timedelta(hours=3),
@@ -534,7 +559,7 @@ def test_confirm_accepts_a_late_transfer_but_not_one_past_the_grace(db) -> None:
             {
                 "address": USDC,
                 "topics": [TRANSFER, "0x" + "aa" * 32, topic_address(TREASURY)],
-                "data": hex(149_000092),
+                "data": hex(149_015092),
                 "transactionHash": tx,
                 "blockNumber": hex(50),
                 "logIndex": "0x0",

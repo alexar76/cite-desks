@@ -31,14 +31,14 @@ from desk_kernel import chain
 from desk_kernel.chain import USDC_DECIMALS, ChainConfig, Rpc, RpcError, Transfer, format_usdc
 from desk_kernel.demo import DEMO_CHECKOUT_CLOSED, is_demo
 from desk_kernel.ids import hash_desk_key, new_desk_key, new_id
-from desk_kernel.invoice_allocation import payment_salt_band, reserve_invoice_amount
+from desk_kernel.invoice_allocation import PAYMENT_SALT_MAX, payment_salt_band, quote_needs_reconciliation, reserve_invoice_amount
 from desk_kernel.service.config import DUMMY_TREASURY, current_claim, get_settings
 from desk_kernel.service.models import BaseInvoice, DeskGrant
 from desk_kernel.service.plans import PLANS
 
 log = logging.getLogger(__name__)
 
-SALT_MAX = 10_000
+SALT_MAX = PAYMENT_SALT_MAX
 # Base stamps blocks in whole seconds and the app's clock is its own, so the "older than
 # the invoice" guard needs slack. It is there to reject a transfer from hours ago, never
 # to argue about a fraction of a second.
@@ -285,6 +285,8 @@ def refresh_status(db: Session, invoice: BaseInvoice) -> BaseInvoice:
 def settle(db: Session, invoice: BaseInvoice, transfer: Transfer) -> BaseInvoice:
     if invoice.status == "paid":
         return invoice
+    if quote_needs_reconciliation(invoice.amount_raw, get_settings().desk_id):
+        raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     try:
         _grant, key = mint_grant(db, plan=invoice.plan, days=invoice.days, payment_ref=invoice.id)
     except GrantError:
@@ -307,6 +309,8 @@ def settle(db: Session, invoice: BaseInvoice, transfer: Transfer) -> BaseInvoice
 
 def match_invoice(db: Session, transfer: Transfer) -> BaseInvoice | None:
     now = datetime.now(timezone.utc)
+    if quote_needs_reconciliation(transfer.amount_raw, get_settings().desk_id):
+        return None
     if db.query(BaseInvoice).filter(BaseInvoice.tx_hash == transfer.tx_hash).one_or_none():
         return None
     # `first`, not `one_or_none`: two rows can still answer to one amount (an expired
@@ -377,6 +381,8 @@ def scan_payments(db: Session, rpc: Rpc | None = None) -> int:
 def confirm_invoice(db: Session, invoice: BaseInvoice, tx_hash: str, rpc: Rpc | None = None) -> BaseInvoice:
     if invoice.status == "paid":
         return invoice
+    if quote_needs_reconciliation(invoice.amount_raw, get_settings().desk_id):
+        raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
         raise ValueError("invoice is not awaiting payment")
     cfg = chain_config()
@@ -419,6 +425,8 @@ def simulate_payment(db: Session, invoice: BaseInvoice, rpc: Rpc | None = None) 
         raise PermissionError("fixture payments are disabled")
     if invoice.status == "paid":
         return invoice
+    if quote_needs_reconciliation(invoice.amount_raw, get_settings().desk_id):
+        raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
         raise ValueError("invoice is not awaiting payment")
     refresh_status(db, invoice)
@@ -468,6 +476,7 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict:
     now = datetime.now(timezone.utc)
     deadline = claim_deadline(invoice, settings)
     paid_at = _aware(invoice.paid_at)
+    manual = invoice.status != "paid" and quote_needs_reconciliation(invoice.amount_raw, settings.desk_id)
     return {
         "id": invoice.id,
         "number": f"{claim.invoice_prefix}-{invoice.id.replace('inv_', '')[:8].upper()}",
@@ -485,7 +494,7 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict:
         "decimals": USDC_DECIMALS,
         "chain": "base" if chain_id == 8453 else f"chain_{chain_id}",
         "chain_id": chain_id,
-        "eip681": chain.eip681(token=settings.pay_usdc_address, chain_id=chain_id, to=invoice.pay_to, amount_raw=invoice.amount_raw),
+        "eip681": "" if manual else chain.eip681(token=settings.pay_usdc_address, chain_id=chain_id, to=invoice.pay_to, amount_raw=invoice.amount_raw),
         "confirmations_required": int(settings.pay_base_confirmations),
         "desk_key": _visible_desk_key(invoice, db),
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
@@ -497,7 +506,8 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict:
         "explorer_tx": f"{explorer}/tx/{invoice.tx_hash}" if invoice.tx_hash else None,
         "late": bool(paid_at and paid_at > _aware(invoice.expires_at)),
         "late_grace_hours": int(settings.pay_late_grace_hours),
-        "claimable": invoice.status in ("pending", "expired") and deadline > now,
+        "claimable": not manual and invoice.status in ("pending", "expired") and deadline > now,
+        "manual_reconciliation_needed": manual,
         "claim_deadline": deadline.isoformat(),
         "public_path": f"/pay/{invoice.id}",
         "fixture": fixture_allowed(settings),

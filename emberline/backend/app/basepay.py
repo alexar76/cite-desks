@@ -40,7 +40,7 @@ from sqlalchemy import and_, case, or_
 from sqlalchemy.orm import Session
 
 from desk_kernel.demo import DEMO_CHECKOUT_CLOSED, is_demo
-from desk_kernel.invoice_allocation import payment_salt_band, reserve_invoice_amount
+from desk_kernel.invoice_allocation import PAYMENT_SALT_MAX, payment_salt_band, quote_needs_reconciliation, reserve_invoice_amount
 
 from .config import get_settings
 from .grants import GrantError, mint_grant
@@ -71,7 +71,7 @@ __all__ = [  # re-exported so callers and tests keep one import site for the rai
 #: Stand-in treasury for the fixture desk. Never quoted in production: `assert_runtime_safety`
 #: refuses to boot with PAY_MODE=fixture, and a live rail needs a real address.
 TEST_TREASURY = "0x1111111111111111111111111111111111111111"
-SALT_MAX = 10_000
+SALT_MAX = PAYMENT_SALT_MAX
 # Base stamps blocks in whole seconds and the app's clock is its own, so the
 # "older than the invoice" guard needs slack. It is there to reject a transfer
 # from hours ago, never to argue about a fraction of a second.
@@ -371,6 +371,7 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict[str, A
     amount_usdc = format_usdc(invoice.amount_raw)
     method = invoice.payment_method or "usdc_base"
     number = invoice_number(invoice.id)
+    manual = invoice.status != "paid" and quote_needs_reconciliation(invoice.amount_raw, "emberline")
     return {
         "id": invoice.id,
         "number": number,
@@ -397,7 +398,7 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict[str, A
         "pay_to": invoice.pay_to,
         "amount_usdc": amount_usdc,
         "amount_raw": str(invoice.amount_raw),
-        "eip681": eip681(token=token, chain_id=chain_id, to=invoice.pay_to, amount_raw=invoice.amount_raw),
+        "eip681": "" if manual else eip681(token=token, chain_id=chain_id, to=invoice.pay_to, amount_raw=invoice.amount_raw),
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
         "expires_at": invoice.expires_at.isoformat() if invoice.expires_at else None,
         "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
@@ -408,7 +409,8 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict[str, A
         "confirmations_required": int(settings.pay_base_confirmations),
         "late": bool(paid_at and paid_at > _aware(invoice.expires_at)),
         "late_grace_hours": int(settings.pay_late_grace_hours),
-        "claimable": invoice.status in ("pending", "expired") and deadline > now,
+        "claimable": not manual and invoice.status in ("pending", "expired") and deadline > now,
+        "manual_reconciliation_needed": manual,
         "claim_deadline": deadline.isoformat(),
         "public_path": f"/pay/{invoice.id}",
         "desk_key": _visible_desk_key(invoice, db),
@@ -419,6 +421,8 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict[str, A
 def settle(db: Session, invoice: BaseInvoice, transfer: Transfer) -> BaseInvoice:
     if invoice.status == "paid":
         return invoice
+    if quote_needs_reconciliation(invoice.amount_raw, "emberline"):
+        raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     try:
         _grant, key = mint_grant(
             db,
@@ -469,6 +473,8 @@ def simulate_payment(db: Session, invoice: BaseInvoice) -> BaseInvoice:
         raise PermissionError("fixture payments are disabled")
     if invoice.status == "paid":
         return invoice
+    if quote_needs_reconciliation(invoice.amount_raw, "emberline"):
+        raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
         raise ValueError("invoice is not awaiting payment")
     expire_stale(db)
@@ -514,6 +520,8 @@ def transfers_from_receipt(receipt: dict[str, Any]) -> list[Transfer]:
 
 def match_invoice(db: Session, transfer: Transfer) -> BaseInvoice | None:
     now = datetime.now(timezone.utc)
+    if quote_needs_reconciliation(transfer.amount_raw, "emberline"):
+        return None
     if db.query(BaseInvoice).filter(BaseInvoice.tx_hash == transfer.tx_hash).one_or_none():
         return None
     # `first`, not `one_or_none`: invoices written before the grace existed
@@ -541,6 +549,8 @@ def block_time(block_number: int, rpc: Rpc | None = None) -> datetime:
 def confirm_invoice(db: Session, invoice: BaseInvoice, tx_hash: str, rpc: Rpc | None = None) -> BaseInvoice:
     if invoice.status == "paid":
         return invoice
+    if quote_needs_reconciliation(invoice.amount_raw, "emberline"):
+        raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
         raise ValueError("invoice is not awaiting payment")
     now = datetime.now(timezone.utc)
@@ -628,7 +638,9 @@ def render_invoice_pdf(invoice: BaseInvoice) -> bytes:
             self.cell(
                 0,
                 8,
-                "Send the exact USDC amount. A rounded transfer will not settle.\n"
+                ("Legacy quote: operator reconciliation required. Do not pay again.\n"
+                 if view["manual_reconciliation_needed"] else
+                 "Send the exact USDC amount. A rounded transfer will not settle.\n") +
                 "A late transfer still settles inside the grace window on the invoice.",
                 new_x=XPos.LMARGIN,
                 new_y=YPos.NEXT,
@@ -653,6 +665,8 @@ def render_invoice_pdf(invoice: BaseInvoice) -> bytes:
         pdf.multi_cell(0, h, str(text), wrapmode="CHAR")
 
     write(f"Invoice {view['number']}", size=20, bold=True, h=9)
+    if view["manual_reconciliation_needed"]:
+        write("LEGACY QUOTE: OPERATOR RECONCILIATION REQUIRED. DO NOT SEND A NEW PAYMENT.", bold=True)
     write(f"{view['status'].upper()}  |  {view['payment_method_label']}")
     write(f"Issued {view.get('created_at') or ''}  |  due {view.get('expires_at') or ''}")
     pdf.ln(3)
