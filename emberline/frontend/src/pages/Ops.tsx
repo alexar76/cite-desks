@@ -113,6 +113,7 @@ export function Ops() {
           <Kpi label="Workspaces" value={String(k.workspaces)} hint={`${k.users} users`} spark={dash.series.runs} />
           <Kpi label="Runs · 30d" value={String(k.runs_completed_30d)} hint={`${k.runs_completed} all-time`} spark={dash.series.runs} />
           <Kpi label="USDC in · 30d" value={money(k.usdc_paid_30d)} hint={`${money(k.usdc_paid)} all-time`} spark={dash.series.paid} />
+          <Kpi label="Card in · 30d" value={money(k.card_paid_usd_30d ?? 0)} hint={`${money(k.card_paid_usd ?? 0)} all-time`} />
           <Kpi label="Hub COGS · 30d" value={money(k.cogs_usd_30d)} hint={`${k.briefs} briefs`} spark={dash.series.cogs_usd} />
           <Kpi label="Pending invoices" value={String(k.invoices_pending)} hint={`${k.grants_unredeemed} keys waiting`} />
           <Kpi label="Push devices" value={String(k.push_devices)} hint={`${k.watches_active} active watches`} />
@@ -273,7 +274,7 @@ export function Ops() {
                   <th>When</th>
                   <th>Plan</th>
                   <th>Status</th>
-                  <th>USDC</th>
+                  <th>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -282,7 +283,9 @@ export function Ops() {
                     <td>{when(row.created_at)}</td>
                     <td>{row.plan}</td>
                     <td>{row.status}</td>
-                    <td className="mono">{row.amount_usdc.toFixed(6)}</td>
+                    <td className="mono">
+                      {row.amount_usdc != null ? `${row.amount_usdc.toFixed(6)} USDC` : `$${(row.amount_usd ?? 0).toFixed(2)} card`}
+                    </td>
                   </tr>
                 ))}
               </tbody>

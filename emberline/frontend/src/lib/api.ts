@@ -39,6 +39,8 @@ export type OpsDashboard = {
     cogs_usd_30d: number;
     usdc_paid_30d: number;
     usdc_paid: number;
+    card_paid_usd_30d?: number;
+    card_paid_usd?: number;
     invoices_pending: number;
     grants_unredeemed: number;
     push_devices: number;
@@ -77,7 +79,10 @@ export type OpsDashboard = {
     id: string;
     plan: string;
     status: string;
-    amount_usdc: number;
+    payment_method?: string;
+    /** Null on a card invoice, whose price is in `amount_usd`. */
+    amount_usdc: number | null;
+    amount_usd?: number | null;
     created_at: string | null;
     paid_at: string | null;
   }[];
@@ -109,6 +114,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ tx_hash }),
     }),
+  refreshCardInvoice: (id: string) =>
+    request<Invoice>(`/api/public/pay/invoices/${id}/card/refresh`, { method: "POST" }),
   simulateInvoice: (id: string) =>
     request<Invoice>(`/api/public/pay/invoices/${id}/simulate`, { method: "POST" }),
   login: (email: string, password: string) =>

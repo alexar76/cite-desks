@@ -189,7 +189,15 @@ def checkout_state(settings=None) -> dict[str, Any]:
         "scan_interval_seconds": PAY_SCAN_INTERVAL_SECONDS,
         # Proof, not intent: an `age_seconds` older than the interval means the poll stopped.
         "last_scan": last_scan(),
+        "card": card_state(settings),
     }
+
+
+def card_state(settings=None) -> dict[str, Any]:
+    from .card import card_closed_reason
+
+    reason = card_closed_reason(settings or get_settings())
+    return {"open": not reason, "reason": reason}
 
 
 #: Evidence that the unattended poll is alive. A scan that settles nothing logs nothing, so
@@ -235,11 +243,11 @@ METHODS = {
         "kind": "fiat",
         "reason": "Not open yet",
     },
-    "card": {
-        "id": "card",
-        "label": "Card",
+    "card_stripe": {
+        "id": "card_stripe",
+        "label": "Card (Stripe)",
         "kind": "fiat",
-        "reason": "Not open yet",
+        "reason": "Not open on this desk",
     },
 }
 
@@ -249,8 +257,11 @@ def invoice_number(invoice_id: str) -> str:
 
 
 def rail_public() -> dict[str, Any]:
+    from .card import card_enabled, card_public
+
     settings = get_settings()
     enabled = rail_enabled(settings)
+    card_on = card_enabled(settings)
     token = (settings.pay_usdc_address or "").lower()
     pay_to = (settings.pay_base_address or "").lower()
     if enabled and not pay_to:
@@ -274,10 +285,13 @@ def rail_public() -> dict[str, Any]:
         "methods": [
             {
                 **spec,
-                "available": spec["id"] == "usdc_base" and enabled,
+                "available": (spec["id"] == "usdc_base" and enabled) or (spec["id"] == "card_stripe" and card_on),
+                **({"reason": card_public(settings)["closed_reason"] or spec["reason"]}
+                   if spec["id"] == "card_stripe" and not card_on else {}),
             }
             for spec in METHODS.values()
         ],
+        "card": card_public(settings),
         "plans": {
             code: {
                 "name": spec["name"],
@@ -309,7 +323,7 @@ def allocate_amount(db: Session, plan: str) -> int:
     # not free to hand to somebody else.
     taken = {
         int(row.amount_raw)
-        for row in db.query(BaseInvoice).filter(_claimable_clause(now))
+        for row in db.query(BaseInvoice).filter(BaseInvoice.payment_method == "usdc_base", _claimable_clause(now))
     }
     lo, hi = payment_salt_band("emberline")
     for salt in range(lo, hi):
@@ -359,7 +373,39 @@ def _visible_desk_key(invoice: BaseInvoice, db: Session | None) -> str | None:
     return invoice.desk_key
 
 
+def _card_invoice_view(invoice: BaseInvoice, db: Session | None) -> dict[str, Any]:
+    from .card import card_view
+
+    spec = PLANS.get(invoice.plan, PLANS["solo"])
+    return {
+        "id": invoice.id,
+        "number": invoice_number(invoice.id),
+        "status": invoice.status,
+        "plan": invoice.plan,
+        "plan_name": spec["name"],
+        "days": invoice.days,
+        "payment_method": "card_stripe",
+        "payment_method_label": METHODS["card_stripe"]["label"],
+        "line_items": [
+            {"description": f"Emberline {spec['name']} desk · {invoice.days} days", "qty": 1, "amount_usd": spec["price_usd"]}
+        ],
+        "amount_usd": spec["price_usd"],
+        "currency": "usd",
+        "card": card_view(invoice, db),
+        "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
+        "expires_at": invoice.expires_at.isoformat() if invoice.expires_at else None,
+        "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
+        "claimable": invoice.status == "pending",
+        "manual_reconciliation_needed": False,
+        "public_path": f"/pay/{invoice.id}",
+        "desk_key": _visible_desk_key(invoice, db),
+        "fixture": False,
+    }
+
+
 def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict[str, Any]:
+    if invoice.payment_method == "card_stripe":
+        return _card_invoice_view(invoice, db)
     settings = get_settings()
     now = datetime.now(timezone.utc)
     deadline = claim_deadline(invoice, settings)
@@ -473,6 +519,8 @@ def simulate_payment(db: Session, invoice: BaseInvoice) -> BaseInvoice:
         raise PermissionError("fixture payments are disabled")
     if invoice.status == "paid":
         return invoice
+    if invoice.payment_method != "usdc_base":
+        raise ValueError("this invoice is paid by card, not by a transfer")
     if quote_needs_reconciliation(invoice.amount_raw, "emberline"):
         raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
@@ -530,6 +578,9 @@ def match_invoice(db: Session, transfer: Transfer) -> BaseInvoice | None:
     return (
         db.query(BaseInvoice)
         .filter(
+            # A card invoice keeps its price in cents in amount_raw; a transfer of that many
+            # USDC units must never settle it.
+            BaseInvoice.payment_method == "usdc_base",
             BaseInvoice.amount_raw == transfer.amount_raw,
             BaseInvoice.desk_key.is_(None),
             _claimable_clause(now),
@@ -549,6 +600,8 @@ def block_time(block_number: int, rpc: Rpc | None = None) -> datetime:
 def confirm_invoice(db: Session, invoice: BaseInvoice, tx_hash: str, rpc: Rpc | None = None) -> BaseInvoice:
     if invoice.status == "paid":
         return invoice
+    if invoice.payment_method != "usdc_base":
+        raise ValueError("this invoice is paid by card, not by a transfer")
     if quote_needs_reconciliation(invoice.amount_raw, "emberline"):
         raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
@@ -619,13 +672,14 @@ def render_invoice_pdf(invoice: BaseInvoice) -> bytes:
     from fpdf.enums import XPos, YPos
 
     view = invoice_view(invoice)
+    card = view["payment_method"] == "card_stripe"
 
     class BillPDF(FPDF):
         def header(self) -> None:
             self.set_font("Helvetica", "B", 8)
             self.set_text_color(90, 70, 55)
             self.set_x(self.l_margin)
-            self.multi_cell(0, 4, "EMBERLINE  |  INVOICE  |  USDC ON BASE", wrapmode="CHAR")
+            self.multi_cell(0, 4, "EMBERLINE  |  INVOICE  |  " + ("CARD (STRIPE)" if card else "USDC ON BASE"), wrapmode="CHAR")
             self.set_draw_color(180, 150, 120)
             y = self.get_y() + 1
             self.line(16, y, 194, y)
@@ -638,10 +692,12 @@ def render_invoice_pdf(invoice: BaseInvoice) -> bytes:
             self.cell(
                 0,
                 8,
-                ("Legacy quote: operator reconciliation required. Do not pay again.\n"
-                 if view["manual_reconciliation_needed"] else
-                 "Send the exact USDC amount. A rounded transfer will not settle.\n") +
-                "A late transfer still settles inside the grace window on the invoice.",
+                ("Paid by card through Stripe. Stripe sends the card receipt; the desk never sees the card."
+                 if card else
+                 ("Legacy quote: operator reconciliation required. Do not pay again.\n"
+                  if view["manual_reconciliation_needed"] else
+                  "Send the exact USDC amount. A rounded transfer will not settle.\n") +
+                 "A late transfer still settles inside the grace window on the invoice."),
                 new_x=XPos.LMARGIN,
                 new_y=YPos.NEXT,
                 align="C",
@@ -670,6 +726,14 @@ def render_invoice_pdf(invoice: BaseInvoice) -> bytes:
     write(f"{view['status'].upper()}  |  {view['payment_method_label']}")
     write(f"Issued {view.get('created_at') or ''}  |  due {view.get('expires_at') or ''}")
     pdf.ln(3)
+    if card:
+        write("Line", size=11, bold=True)
+        for item in view["line_items"]:
+            write(f"{item['description']}    ${item['amount_usd']}")
+        pdf.ln(2)
+        write(f"Amount {'paid' if view['status'] == 'paid' else 'due'}  ${view['amount_usd']} USD", size=14, bold=True, h=7)
+        write("Card payment through Stripe Checkout.")
+        return bytes(pdf.output())
     write("Line", size=11, bold=True)
     for item in view["line_items"]:
         write(f"{item['description']}    ${item['amount_usd']}    {item['amount_usdc']} USDC")

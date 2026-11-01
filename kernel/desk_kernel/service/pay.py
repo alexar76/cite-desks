@@ -221,7 +221,10 @@ def allocate_amount(db: Session, plan: str) -> int:
     """
     base = int(PLANS[plan]["price_usd"]) * 10**USDC_DECIMALS
     now = datetime.now(timezone.utc)
-    taken = {int(row.amount_raw) for row in db.query(BaseInvoice).filter(_claimable_clause(now))}
+    taken = {
+        int(row.amount_raw)
+        for row in db.query(BaseInvoice).filter(BaseInvoice.payment_method == "usdc_base", _claimable_clause(now))
+    }
     # Desks may share one treasury (PAY_BASE_ADDRESS) while each keeps its own invoice table:
     # with the same plan prices they handed out the same lowest amounts, so one buyer's
     # transfer settled an invoice on every desk. Each desk draws from its own band.
@@ -320,6 +323,9 @@ def match_invoice(db: Session, transfer: Transfer) -> BaseInvoice | None:
     return (
         db.query(BaseInvoice)
         .filter(
+            # A card invoice keeps its price in cents in amount_raw; a transfer of that many
+            # USDC units must never settle it.
+            BaseInvoice.payment_method == "usdc_base",
             BaseInvoice.amount_raw == transfer.amount_raw,
             BaseInvoice.desk_key.is_(None),
             _claimable_clause(now),
@@ -382,6 +388,8 @@ def scan_payments(db: Session, rpc: Rpc | None = None) -> int:
 def confirm_invoice(db: Session, invoice: BaseInvoice, tx_hash: str, rpc: Rpc | None = None) -> BaseInvoice:
     if invoice.status == "paid":
         return invoice
+    if invoice.payment_method != "usdc_base":
+        raise ValueError("this invoice is paid by card, not by a transfer")
     if quote_needs_reconciliation(invoice.amount_raw, get_settings().desk_id):
         raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
@@ -426,6 +434,8 @@ def simulate_payment(db: Session, invoice: BaseInvoice, rpc: Rpc | None = None) 
         raise PermissionError("fixture payments are disabled")
     if invoice.status == "paid":
         return invoice
+    if invoice.payment_method != "usdc_base":
+        raise ValueError("this invoice is paid by card, not by a transfer")
     if quote_needs_reconciliation(invoice.amount_raw, get_settings().desk_id):
         raise ValueError("legacy payment quote requires authenticated operator reconciliation")
     if invoice.status not in ("pending", "expired"):
@@ -468,6 +478,8 @@ def _visible_desk_key(invoice: BaseInvoice, db: Session | None) -> str | None:
 
 
 def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict:
+    if invoice.payment_method == "card_stripe":
+        return _card_invoice_view(invoice, db)
     settings = get_settings()
     claim = current_claim()
     spec = PLANS.get(invoice.plan, PLANS["solo"])
@@ -523,7 +535,43 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict:
     }
 
 
+def _card_invoice_view(invoice: BaseInvoice, db: Session | None) -> dict:
+    from desk_kernel.service.card import card_view
+
+    claim = current_claim()
+    spec = PLANS.get(invoice.plan, PLANS["solo"])
+    return {
+        "id": invoice.id,
+        "number": f"{claim.invoice_prefix}-{invoice.id.replace('inv_', '')[:8].upper()}",
+        "status": invoice.status,
+        "plan": invoice.plan,
+        "plan_name": spec["name"],
+        "days": invoice.days,
+        "payment_method": "card_stripe",
+        "amount_usd": spec["price_usd"],
+        "currency": "usd",
+        "card": card_view(invoice, db),
+        "desk_key": _visible_desk_key(invoice, db),
+        "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
+        "expires_at": invoice.expires_at.isoformat() if invoice.expires_at else None,
+        "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
+        "claimable": invoice.status == "pending",
+        "manual_reconciliation_needed": False,
+        "public_path": f"/pay/{invoice.id}",
+        "fixture": False,
+        "line_items": [
+            {
+                "description": f"{claim.product_name} · {spec['name']} · {invoice.days} days",
+                "qty": 1,
+                "amount_usd": spec["price_usd"],
+            }
+        ],
+    }
+
+
 def rail_public() -> dict:
+    from desk_kernel.service.card import card_public
+
     settings = get_settings()
     enabled = rail_enabled(settings)
     chain_id = int(settings.pay_base_chain_id)
@@ -544,6 +592,7 @@ def rail_public() -> dict:
         # A closed rail says why, so the UI can hide checkout instead of offering a
         # button that 503s.
         "closed_reason": "" if enabled else rail_closed_reason(settings),
+        "card": card_public(settings),
         "plans": {
             code: {
                 "name": spec["name"],

@@ -82,8 +82,11 @@ def dashboard(db: Session, *, now: datetime | None = None) -> dict[str, Any]:
     cogs_30 = sum(float(e.amount_usd or 0) for e in usage if (_aware(e.created_at) or now) >= start)
     paid_invoices = [i for i in invoices if i.status == "paid"]
     paid_30 = [i for i in paid_invoices if (_aware(i.paid_at or i.created_at) or now) >= start]
-    usdc_paid_30 = sum(_usdc(i.amount_raw) for i in paid_30)
-    usdc_paid_all = sum(_usdc(i.amount_raw) for i in paid_invoices)
+    # A card invoice keeps USD cents in amount_raw, a USDC invoice micro-USDC: never one sum.
+    usdc_paid_30 = sum(_usdc(i.amount_raw) for i in paid_30 if i.payment_method != "card_stripe")
+    usdc_paid_all = sum(_usdc(i.amount_raw) for i in paid_invoices if i.payment_method != "card_stripe")
+    card_paid_30 = sum(int(i.amount_raw or 0) / 100 for i in paid_30 if i.payment_method == "card_stripe")
+    card_paid_all = sum(int(i.amount_raw or 0) / 100 for i in paid_invoices if i.payment_method == "card_stripe")
 
     ws_with_watch = {w.workspace_id for w in watches}
     ws_with_run = {r.workspace_id for r in completed}
@@ -91,7 +94,7 @@ def dashboard(db: Session, *, now: datetime | None = None) -> dict[str, Any]:
 
     funnel = [
         {"id": "invoice", "label": "Invoice opened", "count": len(invoices)},
-        {"id": "paid", "label": "USDC settled", "count": len(paid_invoices)},
+        {"id": "paid", "label": "Paid (USDC or card)", "count": len(paid_invoices)},
         {"id": "grant", "label": "Desk key minted", "count": len(grants)},
         {"id": "redeemed", "label": "Key redeemed", "count": sum(1 for g in grants if g.redeemed_at)},
         {"id": "watch", "label": "First watch", "count": len(ws_with_watch)},
@@ -188,7 +191,9 @@ def dashboard(db: Session, *, now: datetime | None = None) -> dict[str, Any]:
                 "id": invoice.id,
                 "plan": invoice.plan,
                 "status": invoice.status,
-                "amount_usdc": _usdc(invoice.amount_raw),
+                "payment_method": invoice.payment_method or "usdc_base",
+                "amount_usdc": _usdc(invoice.amount_raw) if invoice.payment_method != "card_stripe" else None,
+                "amount_usd": int(invoice.amount_raw or 0) / 100 if invoice.payment_method == "card_stripe" else None,
                 "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
                 "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
             }
@@ -214,6 +219,8 @@ def dashboard(db: Session, *, now: datetime | None = None) -> dict[str, Any]:
             "cogs_usd_30d": round(cogs_30, 4),
             "usdc_paid_30d": round(usdc_paid_30, 4),
             "usdc_paid": round(usdc_paid_all, 4),
+            "card_paid_usd_30d": round(card_paid_30, 2),
+            "card_paid_usd": round(card_paid_all, 2),
             "invoices_pending": sum(1 for i in invoices if i.status == "pending"),
             "grants_unredeemed": sum(1 for g in grants if not g.redeemed_at),
             "push_devices": len(devices),

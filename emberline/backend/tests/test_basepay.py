@@ -583,7 +583,8 @@ def test_health_answers_whether_this_desk_can_sell_unattended(client) -> None:
     from app.basepay import PAY_SCAN_INTERVAL_SECONDS
 
     checkout = client.get("/api/public/health").json()["checkout"]
-    assert set(checkout) == {"open", "reason", "settlement", "scan_interval_seconds", "last_scan"}
+    assert set(checkout) == {"open", "reason", "settlement", "scan_interval_seconds", "last_scan", "card"}
+    assert checkout["card"] == {"open": False, "reason": checkout["card"]["reason"]}
     assert checkout["open"] is True and checkout["reason"] == ""
     assert checkout["settlement"] in ("scheduled", "off")
     assert checkout["scan_interval_seconds"] == PAY_SCAN_INTERVAL_SECONDS

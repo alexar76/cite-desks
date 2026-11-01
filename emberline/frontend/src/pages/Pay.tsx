@@ -28,7 +28,14 @@ export function Pay() {
     { id: "usdc_base", label: "USDC on Base", available: false, reason: "Loading" },
   ];
   const methodOk = methods.some((item) => item.id === method && item.available);
-  const closed = rail != null && rail.enabled === false;
+  const cardOpen = Boolean(rail?.card?.enabled);
+  const closed = rail != null && rail.enabled === false && !cardOpen;
+  const methodLabel = methods.find((item) => item.id === method)?.label || method;
+
+  useEffect(() => {
+    // A desk with only the card rail open starts on it rather than on a closed USDC rail.
+    if (rail && !rail.enabled && cardOpen && method === "usdc_base") setMethod("card_stripe");
+  }, [rail, cardOpen, method]);
 
   async function place(event: FormEvent) {
     event.preventDefault();
@@ -37,6 +44,12 @@ export function Pay() {
     setBusy(true);
     try {
       const invoice = await api.createOrder(plan, method);
+      if (invoice.card?.checkout_url) {
+        // Remember the invoice in history first, so Back from Stripe lands on it.
+        window.history.pushState({}, "", invoice.public_path || `/pay/${invoice.id}`);
+        window.location.assign(invoice.card.checkout_url);
+        return;
+      }
       navigate(invoice.public_path || `/pay/${invoice.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create the order.");
@@ -70,8 +83,11 @@ export function Pay() {
           Choose a desk, then a rail.
         </h2>
         <p className="muted">
-          You get a numbered invoice. Crypto is open: USDC on Base. Wire and card are listed so the
-          seat is reserved — they do not settle yet.
+          You get a numbered invoice.{" "}
+          {cardOpen
+            ? "Card (through Stripe) and USDC on Base are open; wire is listed but does not settle yet."
+            : "Crypto is open: USDC on Base. Wire and card are listed so the seat is reserved — they do not settle yet."}
+          {rail?.card?.test_mode && " Stripe test mode: test cards only, no real charge."}
         </p>
 
         <div className="kicker" style={{ marginTop: 28 }}>
@@ -109,7 +125,13 @@ export function Pay() {
             >
               <div className="kicker">{item.kind || "rail"}</div>
               <strong>{item.label}</strong>
-              <p>{item.available ? "Open · exact USDC amount is the invoice" : item.reason || "Not open yet"}</p>
+              <p>
+                {!item.available
+                  ? item.reason || "Not open yet"
+                  : item.id === "card_stripe"
+                    ? "Open · Stripe Checkout, the desk never sees the card"
+                    : "Open · exact USDC amount is the invoice"}
+              </p>
             </button>
           ))}
         </div>
@@ -119,7 +141,7 @@ export function Pay() {
             <div className="kicker">Due</div>
             <div className="pick-price">${selected?.price_usd ?? "—"}</div>
             <p className="muted">
-              {selected?.name || plan} · {selected?.days ?? 30} days · {methodOk ? "USDC on Base" : "no open rail"}
+              {selected?.name || plan} · {selected?.days ?? 30} days · {methodOk ? methodLabel : "no open rail"}
             </p>
           </div>
           <button className="btn btn-ember" type="submit" disabled={!methodOk || busy}>

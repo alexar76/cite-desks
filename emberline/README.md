@@ -115,7 +115,7 @@ User → Emberline web (nginx)
                     └─ Delivery (Slack / HMAC webhook)
 ```
 
-Money: customer → USDC on Base (or wire mint) → desk key → Emberline → AIMarket Hub. Margin is the desk — schedule, fail-closed brief, archive — not invented geometry.
+Money: customer → USDC on Base, card through Stripe Checkout (`app/card.py`: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`, webhook at `/api/public/pay/stripe/webhook`; closed in demo mode, a test key only outside production) or wire mint → desk key → Emberline → AIMarket Hub. Margin is the desk — schedule, fail-closed brief, archive — not invented geometry.
 
 **Beyond ATLAS:** Hub sells a snapshot. Emberline sells the watch, the citeable tape, receipt verification, constrained delivery, and the commercial envelope so analysts do not each hold a Hub key. See [docs/enterprise/VALUE.md](docs/enterprise/VALUE.md).
 

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import hmac
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
@@ -13,6 +14,14 @@ from desk_kernel.chain import RpcError
 from desk_kernel.citepack import build_cite_pack
 from desk_kernel.geo import BBoxError, PointError, hms_point_ok, nordic_ais_ok, parse_schedule, validate_bbox, validate_point
 from desk_kernel.i18n import LANG_COOKIE, catalog_for, pick_locale
+from desk_kernel.service.card import (
+    CardRefused,
+    card_closed_reason,
+    card_enabled,
+    create_card_invoice,
+    handle_webhook,
+    refresh_card,
+)
 from desk_kernel.service.config import current_claim, get_settings
 from desk_kernel.service.db import get_db
 from desk_kernel.service.engine import (
@@ -99,6 +108,7 @@ def health() -> dict:
             # Proof, not intent: `last_scan.age_seconds` older than the interval (or null on
             # a desk that has been up for a while) means the poll is not running.
             "last_scan": last_scan(),
+            "card": {"open": card_enabled(settings), "reason": card_closed_reason(settings)},
         },
         # Selling access the desk cannot honour is worse than not selling: a fresh
         # `supply.last_failure` means paid plans are currently buying nothing, and
@@ -512,6 +522,55 @@ def pay_invoice_confirm(invoice_id: str, body: ConfirmBody, request: Request, db
     except RpcError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     return invoice_view(invoice, db)
+
+
+class CardBody(BaseModel):
+    plan: str = "solo"
+
+
+@router.post("/api/public/pay/card")
+def pay_card(body: CardBody, request: Request, db: Session = Depends(get_db)):
+    """A card invoice and its Stripe Checkout Session; the buyer goes to `card.checkout_url`."""
+    if not allow_pay_attempt(client_ip(request)):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many payment attempts")
+    try:
+        invoice = create_card_invoice(db, plan=body.plan)
+    except GrantError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    except PayUnavailable as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    return invoice_view(invoice, db)
+
+
+@router.post("/api/public/pay/invoices/{invoice_id}/card/refresh")
+def pay_card_refresh(invoice_id: str, request: Request, db: Session = Depends(get_db)):
+    """The buyer is back from Stripe before the webhook: ask Stripe now (at most every 5 s)."""
+    if not allow_pay_attempt(client_ip(request), limit=60):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many refresh attempts")
+    invoice = db.get(BaseInvoice, invoice_id)
+    if invoice is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "invoice not found")
+    try:
+        invoice = refresh_card(db, invoice)
+    except PayUnavailable as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    except CardRefused as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return invoice_view(refresh_status(db, invoice), db)
+
+
+@router.post("/api/public/pay/stripe/webhook")
+async def pay_stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    if not get_settings().stripe_webhook_secret.strip():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")
+    payload = await request.body()
+    try:
+        return await run_in_threadpool(handle_webhook, db, payload, request.headers.get("stripe-signature", ""))
+    except CardRefused as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except PayUnavailable as exc:
+        # Stripe retries a 5xx, which is what a reversal we cannot place yet needs.
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
 
 @router.post("/api/public/pay/invoices/{invoice_id}/fixture")

@@ -81,7 +81,10 @@ _pay_lock = threading.Lock()
 
 
 def _scan_base() -> None:
-    if not basepay.rail_enabled():
+    from . import card
+
+    usdc, cards = basepay.rail_enabled(), card.card_enabled()
+    if not (usdc or cards):
         return
     if not _pay_lock.acquire(blocking=False):
         return
@@ -91,14 +94,24 @@ def _scan_base() -> None:
         locked = _advisory_lock_pay(db)
         if not locked:
             return
-        basepay.scan_payments(db)
-    except Exception:
-        # Was a bare `db.rollback()` with no log line. The payment scan is the only thing
-        # that turns a customer's USDC into a desk key, so a poll that stops seeing
-        # transfers must not be indistinguishable from a poll that saw none — that is how
-        # a silently-too-wide eth_getLogs window went unnoticed.
-        log.exception("basepay: scheduled payment scan failed; invoices stay unsettled")
-        db.rollback()
+        try:
+            if usdc:
+                basepay.scan_payments(db)
+        except Exception:
+            # Was a bare `db.rollback()` with no log line. The payment scan is the only thing
+            # that turns a customer's USDC into a desk key, so a poll that stops seeing
+            # transfers must not be indistinguishable from a poll that saw none — that is how
+            # a silently-too-wide eth_getLogs window went unnoticed.
+            log.exception("basepay: scheduled payment scan failed; invoices stay unsettled")
+            db.rollback()
+        try:
+            # Card sessions settle by webhook; this catches a buyer who closed the tab while
+            # the webhook was lost, so a paid card still becomes a key with nobody watching.
+            if cards:
+                card.sweep_card_invoices(db)
+        except Exception:
+            log.exception("basepay: scheduled card sweep failed; card invoices stay unsettled")
+            db.rollback()
     finally:
         if locked:
             try:

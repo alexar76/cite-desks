@@ -5,7 +5,10 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .. import basepay
+from fastapi.concurrency import run_in_threadpool
+
+from .. import basepay, card
+from ..config import get_settings
 from ..db import get_db
 from ..models import BaseInvoice
 from ..plans import PLANS
@@ -31,8 +34,10 @@ def pay_rail_status() -> dict:
 def _place_order(body: InvoiceIn, request: Request, db: Session) -> dict:
     if body.plan not in PLANS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "unknown plan")
+    if body.payment_method == card.CARD:
+        return _place_card_order(body, request, db)
     if body.payment_method != "usdc_base":
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "only usdc_base is open")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "payment method must be usdc_base or card_stripe")
     if not basepay.rail_enabled():
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -46,6 +51,20 @@ def _place_order(body: InvoiceIn, request: Request, db: Session) -> dict:
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     except RuntimeError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    return basepay.invoice_view(invoice, db)
+
+
+def _place_card_order(body: InvoiceIn, request: Request, db: Session) -> dict:
+    """A card invoice and its Stripe Checkout Session; the buyer goes to `card.checkout_url`."""
+    ip = request.client.host if request.client else "unknown"
+    if not allow_pay_attempt(ip):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many invoices from this address")
+    try:
+        invoice = card.create_card_invoice(db, plan=body.plan)
+    except card.GrantError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    except card.PayUnavailable as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     return basepay.invoice_view(invoice, db)
 
@@ -101,6 +120,38 @@ def confirm_invoice(invoice_id: str, body: ConfirmIn, db: Session = Depends(get_
     except basepay.RpcError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     return basepay.invoice_view(invoice, db)
+
+
+@router.post("/invoices/{invoice_id}/card/refresh")
+def refresh_card_invoice(invoice_id: str, request: Request, db: Session = Depends(get_db)) -> dict:
+    """The buyer is back from Stripe before the webhook: ask Stripe now (at most every 5 s)."""
+    ip = request.client.host if request.client else "unknown"
+    if not allow_pay_attempt(ip, limit=60):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many refresh attempts")
+    invoice = db.get(BaseInvoice, invoice_id)
+    if invoice is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "invoice not found")
+    try:
+        invoice = card.refresh_card(db, invoice)
+    except card.PayUnavailable as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    except card.CardRefused as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return basepay.invoice_view(invoice, db)
+
+
+@router.post("/stripe/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)) -> dict:
+    if not get_settings().stripe_webhook_secret.strip():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")
+    payload = await request.body()
+    try:
+        return await run_in_threadpool(card.handle_webhook, db, payload, request.headers.get("stripe-signature", ""))
+    except card.CardRefused as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    except card.PayUnavailable as exc:
+        # Stripe retries a 5xx, which is what a reversal we cannot place yet needs.
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
 
 @router.post("/invoices/{invoice_id}/simulate")

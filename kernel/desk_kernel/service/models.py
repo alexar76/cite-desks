@@ -159,3 +159,21 @@ class BaseInvoice(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CardCheckout(Base):
+    """The Stripe Checkout Session behind a `card_stripe` invoice (service/card.py)."""
+
+    __tablename__ = "card_checkouts"
+
+    invoice_id: Mapped[str] = mapped_column(ForeignKey("base_invoices.id"), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    checkout_url: Mapped[str] = mapped_column(Text, default="")
+    livemode: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: open -> paid | expired, and paid -> refunded | disputed when the money goes back.
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    payment_intent: Mapped[str] = mapped_column(String(255), default="", index=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    #: Last time this desk asked Stripe about the session; rations the recovery reads.
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

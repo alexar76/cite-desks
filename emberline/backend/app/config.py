@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # A transfer that lands after the quote lapses still settles for this long.
     # Without it a slow wallet becomes a manual refund.
     pay_late_grace_hours: int = 24
+    #: Card checkout through Stripe (app/card.py). Both empty = card closed. A test key
+    #: (sk_test_/rk_test_) opens only outside production, a live key only in production.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
     login_rate_limit: int = 20
     cookie_secure: bool = False
     vapid_public_key: str = ""

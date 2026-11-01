@@ -16,6 +16,7 @@ from desk_kernel.service.db import Base, SessionLocal, engine
 from desk_kernel.service.engine import due, execute_watch
 from desk_kernel.service.models import Watch
 from desk_kernel.service.pay import rail_closed_reason as pay_closed_reason
+from desk_kernel.service.card import card_enabled, sweep_card_invoices
 from desk_kernel.service.pay import rail_enabled, scan_payments
 from desk_kernel.service.seed import seed_demo
 
@@ -77,14 +78,24 @@ def _pay_tick() -> None:
         locked = _advisory_lock(db, PAY_SCAN_LOCK_ID)
         if not locked:
             return
-        scan_payments(db)
-    except Exception:
-        # Never a bare rollback: this poll is the only thing that turns a customer's USDC
-        # into a desk key, so a scan that stops seeing transfers must not look like a scan
-        # that saw none. That is how a silently-too-wide eth_getLogs window goes unnoticed
-        # and a paying buyer waits forever.
-        db.rollback()
-        log.exception("pay: scheduled settlement scan failed; invoices stay unsettled")
+        try:
+            if rail_enabled():
+                scan_payments(db)
+        except Exception:
+            # Never a bare rollback: this poll is the only thing that turns a customer's USDC
+            # into a desk key, so a scan that stops seeing transfers must not look like a scan
+            # that saw none. That is how a silently-too-wide eth_getLogs window goes unnoticed
+            # and a paying buyer waits forever.
+            db.rollback()
+            log.exception("pay: scheduled settlement scan failed; invoices stay unsettled")
+        try:
+            # Card sessions settle by webhook; this catches a buyer who closed the tab while
+            # the webhook was lost, so a paid card still becomes a key with nobody watching.
+            if card_enabled():
+                sweep_card_invoices(db)
+        except Exception:
+            db.rollback()
+            log.exception("pay: scheduled card sweep failed; card invoices stay unsettled")
     finally:
         if locked:
             try:
@@ -110,7 +121,7 @@ async def lifespan(_: FastAPI):
     if settings.scheduler_enabled and settings.app_env != "test":
         if not settings.is_demo or settings.desk_demo_scheduler:
             scheduler.add_job(_tick, "interval", minutes=5, id="watch-tick", replace_existing=True)
-        if rail_enabled(settings):
+        if rail_enabled(settings) or card_enabled(settings):
             scheduler.add_job(
                 _pay_tick,
                 "interval",

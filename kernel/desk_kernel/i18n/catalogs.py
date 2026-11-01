@@ -13,8 +13,9 @@ LOCALE_NAMES = {
 }
 
 
-# Checkout wording is kernel-level: every desk sells the same USDC-on-Base rail, so the
-# strings live once here and a desk catalog only overrides them if it has a reason to.
+# Checkout wording is kernel-level: every desk sells through the same rails (USDC on Base,
+# card through Stripe), so the strings live once here and a desk catalog only overrides
+# them if it has a reason to.
 # Missing locale -> English, which is better than an untranslated key on a payment page.
 PAY_UI: dict[str, dict[str, str]] = {
     "en": {
@@ -39,6 +40,15 @@ PAY_UI: dict[str, dict[str, str]] = {
         "pay_plan_runs": "runs / month",
         "redeem_label": "Desk key",
         "redeem": "Redeem",
+        "pay_lede_card": "Pay by card or in USDC on Base. The desk key is issued automatically, not by a person.",
+        "pay_lede_card_only": "Pay by card. The desk key is issued automatically, not by a person.",
+        "pay_card": "Pay by card",
+        "pay_usdc": "Pay USDC",
+        "pay_card_open": "Continue to card payment",
+        "pay_card_waiting": "Waiting for the card payment. This page settles on its own.",
+        "pay_card_expired": "This card checkout lapsed. Nothing was charged.",
+        "pay_card_refunded": "Refunded. This desk key no longer works.",
+        "pay_card_test": "Stripe test mode: test cards only, no real charge.",
     },
     "nl": {
         "pay_kicker": "Prepaid toegang",
@@ -62,6 +72,15 @@ PAY_UI: dict[str, dict[str, str]] = {
         "pay_plan_runs": "runs / maand",
         "redeem_label": "Desk key",
         "redeem": "Inwisselen",
+        "pay_lede_card": "Betaal met kaart of in USDC op Base. De desk key wordt automatisch uitgegeven, niet door een mens.",
+        "pay_lede_card_only": "Betaal met kaart. De desk key wordt automatisch uitgegeven, niet door een mens.",
+        "pay_card": "Betalen met kaart",
+        "pay_usdc": "Betalen in USDC",
+        "pay_card_open": "Verder naar kaartbetaling",
+        "pay_card_waiting": "Wachten op de kaartbetaling. Deze pagina settelt zelf.",
+        "pay_card_expired": "Deze kaartbetaling is verlopen. Er is niets afgeschreven.",
+        "pay_card_refunded": "Terugbetaald. Deze desk key werkt niet meer.",
+        "pay_card_test": "Stripe-testmodus: alleen testkaarten, geen echte afschrijving.",
     },
     "fr": {
         "pay_kicker": "Accès prépayé",
@@ -85,6 +104,15 @@ PAY_UI: dict[str, dict[str, str]] = {
         "pay_plan_runs": "runs / mois",
         "redeem_label": "Clé du desk",
         "redeem": "Utiliser",
+        "pay_lede_card": "Payez par carte ou en USDC sur Base. La clé du desk est émise automatiquement, pas par une personne.",
+        "pay_lede_card_only": "Payez par carte. La clé du desk est émise automatiquement, pas par une personne.",
+        "pay_card": "Payer par carte",
+        "pay_usdc": "Payer en USDC",
+        "pay_card_open": "Continuer vers le paiement par carte",
+        "pay_card_waiting": "En attente du paiement par carte. Cette page se règle d’elle-même.",
+        "pay_card_expired": "Ce paiement par carte a expiré. Rien n’a été débité.",
+        "pay_card_refunded": "Remboursé. Cette clé du desk ne fonctionne plus.",
+        "pay_card_test": "Mode test Stripe : cartes de test uniquement, aucun débit réel.",
     },
     "de": {
         "pay_kicker": "Prepaid-Zugang",
@@ -108,6 +136,15 @@ PAY_UI: dict[str, dict[str, str]] = {
         "pay_plan_runs": "Runs / Monat",
         "redeem_label": "Desk-Key",
         "redeem": "Einlösen",
+        "pay_lede_card": "Zahlen Sie per Karte oder in USDC auf Base. Der Desk-Schlüssel wird automatisch ausgestellt, nicht von einer Person.",
+        "pay_lede_card_only": "Zahlen Sie per Karte. Der Desk-Schlüssel wird automatisch ausgestellt, nicht von einer Person.",
+        "pay_card": "Mit Karte zahlen",
+        "pay_usdc": "In USDC zahlen",
+        "pay_card_open": "Weiter zur Kartenzahlung",
+        "pay_card_waiting": "Warten auf die Kartenzahlung. Diese Seite aktualisiert sich selbst.",
+        "pay_card_expired": "Diese Kartenzahlung ist abgelaufen. Es wurde nichts belastet.",
+        "pay_card_refunded": "Erstattet. Dieser Desk-Schlüssel funktioniert nicht mehr.",
+        "pay_card_test": "Stripe-Testmodus: nur Testkarten, keine echte Belastung.",
     },
     "es": {
         "pay_kicker": "Acceso prepago",
@@ -131,6 +168,15 @@ PAY_UI: dict[str, dict[str, str]] = {
         "pay_plan_runs": "runs / mes",
         "redeem_label": "Desk key",
         "redeem": "Canjear",
+        "pay_lede_card": "Pague con tarjeta o en USDC en Base. La clave del desk se emite automáticamente, no una persona.",
+        "pay_lede_card_only": "Pague con tarjeta. La clave del desk se emite automáticamente, no una persona.",
+        "pay_card": "Pagar con tarjeta",
+        "pay_usdc": "Pagar en USDC",
+        "pay_card_open": "Continuar al pago con tarjeta",
+        "pay_card_waiting": "Esperando el pago con tarjeta. Esta página se actualiza sola.",
+        "pay_card_expired": "Este pago con tarjeta caducó. No se cobró nada.",
+        "pay_card_refunded": "Reembolsado. Esta clave del desk ya no funciona.",
+        "pay_card_test": "Modo de prueba de Stripe: solo tarjetas de prueba, sin cargo real.",
     },
     "fi": {
         "pay_kicker": "Ennakkomaksettu käyttöoikeus",
@@ -154,6 +200,15 @@ PAY_UI: dict[str, dict[str, str]] = {
         "pay_plan_runs": "ajoa / kk",
         "redeem_label": "Desk key",
         "redeem": "Lunasta",
+        "pay_lede_card": "Maksa kortilla tai USDC:nä Basessa. Desk-avain myönnetään automaattisesti, ei ihmisen toimesta.",
+        "pay_lede_card_only": "Maksa kortilla. Desk-avain myönnetään automaattisesti, ei ihmisen toimesta.",
+        "pay_card": "Maksa kortilla",
+        "pay_usdc": "Maksa USDC:nä",
+        "pay_card_open": "Jatka korttimaksuun",
+        "pay_card_waiting": "Odotetaan korttimaksua. Sivu päivittyy itsestään.",
+        "pay_card_expired": "Tämä korttimaksu vanhentui. Mitään ei veloitettu.",
+        "pay_card_refunded": "Hyvitetty. Tämä desk-avain ei enää toimi.",
+        "pay_card_test": "Stripen testitila: vain testikortit, ei oikeaa veloitusta.",
     },
     "nb": {
         "pay_kicker": "Forhåndsbetalt tilgang",
@@ -177,6 +232,15 @@ PAY_UI: dict[str, dict[str, str]] = {
         "pay_plan_runs": "kjøringer / mnd",
         "redeem_label": "Desk-nøkkel",
         "redeem": "Løs inn",
+        "pay_lede_card": "Betal med kort eller i USDC på Base. Desk-nøkkelen utstedes automatisk, ikke av en person.",
+        "pay_lede_card_only": "Betal med kort. Desk-nøkkelen utstedes automatisk, ikke av en person.",
+        "pay_card": "Betal med kort",
+        "pay_usdc": "Betal i USDC",
+        "pay_card_open": "Fortsett til kortbetaling",
+        "pay_card_waiting": "Venter på kortbetalingen. Siden oppdaterer seg selv.",
+        "pay_card_expired": "Denne kortbetalingen utløp. Ingenting ble trukket.",
+        "pay_card_refunded": "Refundert. Denne desk-nøkkelen virker ikke lenger.",
+        "pay_card_test": "Stripe testmodus: kun testkort, ingen ekte belastning.",
     },
 }
 
@@ -916,7 +980,7 @@ TIDELINE["en"].update(_site_copy(
     refuse=["A single flood-risk number", "Floodbase / 50-year index", "Evacuation / all-clear", "Merging CAP with Kingston stage"],
     boilerplate="Tideline is an independent flood evidence desk. On a schedule it buys attested flood warnings and in-situ river gauges for a named basin, writes a fail-closed brief, and files a citeable archive that never merges the two lists into a flood-risk number. It is not a flood model, Floodbase, an evacuation authority, or an all-clear.",
     legal_p1="Tideline is a monitoring aid. Warning products and in-situ gauges stay in two lists. Empty LIVE is not all-clear.",
-    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base. These terms are a product draft, not legal advice.",
+    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base, or a card through Stripe where this desk has opened card checkout: Stripe processes the card and the desk never receives card details. These terms are a product draft, not legal advice.",
 ))
 
 SOLRECORD["en"].update(_site_copy(
@@ -940,7 +1004,7 @@ SOLRECORD["en"].update(_site_copy(
     refuse=["Yield forecast", "Pyranometer claim", "P50/P90 bankable assessment"],
     boilerplate="Solrecord is an independent PV evidence desk. It files a retrospective irradiance record for one plant pin: NASA POWER all-sky vs clear-sky plus CAMS aerosol. It is not a yield forecast, not a pyranometer, and not a P50/P90 bankable assessment.",
     legal_p1="Solrecord is a monitoring aid. The POWER cell is not a pyranometer. Quiet is not a performance guarantee.",
-    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base. These terms are a product draft, not legal advice.",
+    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base, or a card through Stripe where this desk has opened card checkout: Stripe processes the card and the desk never receives card details. These terms are a product draft, not legal advice.",
 ))
 
 SEAMARK["en"].update(_site_copy(
@@ -964,7 +1028,7 @@ SEAMARK["en"].update(_site_copy(
     refuse=["Global AIS", "Merging into one Europe blob", "Collision avoidance / VTS"],
     boilerplate="Seamark is an independent Nordic maritime evidence desk. It buys public AIS for a named box in Finnish and/or Norwegian waters and files Fintraffic and Kystverket in two lists. It is not global AIS, not GFW, and not a VTS or collision-avoidance product.",
     legal_p1="Seamark is a monitoring aid for licensed Finnish and Norwegian waters. AIS positions are public coastal coverage, not own-edge radar.",
-    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base. These terms are a product draft, not legal advice.",
+    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base, or a card through Stripe where this desk has opened card checkout: Stripe processes the card and the desk never receives card details. These terms are a product draft, not legal advice.",
 ))
 
 PLINTH["en"].update(_site_copy(
@@ -988,7 +1052,7 @@ PLINTH["en"].update(_site_copy(
     refuse=["BMS / indoor IAQ", "First Street 50-year index", "Fire perimeter", "Campus risk score"],
     boilerplate="Plinth is an independent site evidence desk. On a schedule it buys public weather, air, flood warnings, river gauges and grid for a named building, campus, or colo bbox, writes a fail-closed brief, and files a citeable archive that never folds those lists into a campus risk score. It is not a BMS, a First Street index, a fire perimeter, a flood model, or an insurer.",
     legal_p1="Plinth is a monitoring aid for one named site. Weather, air, flood warnings, river gauges and grid stay in separate lists. Empty LIVE is not all-clear. Plinth does not operate the building.",
-    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base. These terms are a product draft, not legal advice.",
+    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base, or a card through Stripe where this desk has opened card checkout: Stripe processes the card and the desk never receives card details. These terms are a product draft, not legal advice.",
 ))
 
 SMOKEPROOF = {
@@ -1199,7 +1263,7 @@ SMOKEPROOF["en"].update(_site_copy(
     ],
     boilerplate="Smokeproof is an independent smoke evidence desk. On a schedule it pins one North American asset, buys atlas.smoke.operations@v1, and files NOAA HMS containment plus colocated air as separate lists — never a single risk score. HMS is North America only. Empty or failed upstream stays empty; SIM is never LIVE. It is not an evacuation authority, a medical product, a fire perimeter, a global smoke map, or an insurer.",
     legal_p1="Smokeproof is a monitoring aid: point, schedule, file. HMS smoke is a qualitative North America polygon — not global, not measured PM2.5, not a fire perimeter. Nearby air is modeled Open-Meteo at the same coordinate and stays a separate list. Empty or refused upstream is not all-clear. SIM is never LIVE.",
-    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base. These terms are a product draft, not legal advice.",
+    legal_p2="Prepaid desk keys are anonymous entitlements. Public checkout is USDC on Base, or a card through Stripe where this desk has opened card checkout: Stripe processes the card and the desk never receives card details. These terms are a product draft, not legal advice.",
 ))
 
 CATALOGS: dict[str, dict[str, dict[str, Any]]] = {

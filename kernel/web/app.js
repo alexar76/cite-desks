@@ -165,8 +165,9 @@ let pollTimer = null;
 
 function paintPlans() {
   const rail = status.pay || {};
+  const card = rail.card || {};
   const host = $("plans");
-  if (!rail.enabled) {
+  if (!rail.enabled && !card.enabled) {
     host.innerHTML = "";
     const closed = $("pay-closed");
     closed.textContent = [ui.pay_closed, rail.closed_reason].filter(Boolean).join(" ");
@@ -174,6 +175,10 @@ function paintPlans() {
     return;
   }
   $("pay-closed").hidden = true;
+  const lede = document.querySelector("#buy [data-i=pay_lede]");
+  if (lede && card.enabled) lede.textContent = rail.enabled ? (ui.pay_lede_card || "") : (ui.pay_lede_card_only || "");
+  // A sandbox desk says so on every plan: nobody should think a test card bought anything.
+  const test = card.enabled && card.test_mode ? `<p class="meta">${esc(ui.pay_card_test || "Stripe test mode")}</p>` : "";
   host.innerHTML = Object.entries(rail.plans || {}).map(([code, plan]) =>
     `<div class="plan">
       <h3>${esc(plan.name)}</h3>
@@ -183,7 +188,9 @@ function paintPlans() {
         <li>${esc(plan.runs)} ${esc(ui.pay_plan_runs || "runs / month")}</li>
         <li>${esc(plan.days)} days</li>
       </ul>
-      <button class="btn btn-accent" data-plan="${esc(code)}">${esc(ui.pay_buy || "Buy")}</button>
+      ${card.enabled ? `<button class="btn btn-accent" data-card-plan="${esc(code)}">${esc(ui.pay_card || "Pay by card")}</button>` : ""}
+      ${rail.enabled ? `<button class="btn${card.enabled ? "" : " btn-accent"}" data-plan="${esc(code)}">${esc(card.enabled ? (ui.pay_usdc || "Pay USDC") : (ui.pay_buy || "Buy"))}</button>` : ""}
+      ${test}
     </div>`
   ).join("");
 }
@@ -194,12 +201,44 @@ function stamp(iso) {
   return isNaN(when) ? iso : when.toLocaleString();
 }
 
+function paintCardInvoice(invoice) {
+  const paid = invoice.status === "paid";
+  const card = invoice.card || {};
+  $("ck-instructions").hidden = true;
+  $("ck-wallet").hidden = true;
+  $("ck-explorer").hidden = true;
+  $("ck-simulate").hidden = true;
+  $("ck-confirm").hidden = true;
+  $("ck-card").hidden = !card.checkout_url;
+  if (card.checkout_url) $("ck-card").href = card.checkout_url;
+  $("ck-expiry").textContent = paid ? stamp(invoice.paid_at) : `${ui.pay_expires || "Quote lapses"} ${stamp(invoice.expires_at)}`;
+  const states = {
+    paid: ui.pay_paid || "Paid.",
+    refunded: ui.pay_card_refunded || "Refunded. This desk key no longer works.",
+    disputed: ui.pay_card_refunded || "Refunded. This desk key no longer works.",
+    expired: ui.pay_card_expired || "This card checkout lapsed. Nothing was charged.",
+    failed: ui.pay_card_expired || "This card checkout lapsed. Nothing was charged.",
+  };
+  $("ck-state").textContent = states[invoice.status] || ui.pay_card_waiting || "Waiting for the card payment.";
+}
+
 function paintInvoice(invoice) {
   const paid = invoice.status === "paid";
   const manual = Boolean(invoice.manual_reconciliation_needed);
   const box = $("checkout");
   box.hidden = false;
   $("ck-number").textContent = `${invoice.number} · ${invoice.plan_name} · ${invoice.days} days`;
+  if (invoice.payment_method === "card_stripe") {
+    paintCardInvoice(invoice);
+    if (invoice.desk_key) {
+      $("ck-key").textContent = invoice.desk_key;
+      $("ck-key-wrap").hidden = false;
+    }
+    box.scrollIntoView({ block: "nearest" });
+    return;
+  }
+  $("ck-card").hidden = true;
+  $("ck-explorer").hidden = false;
   $("ck-amount").textContent = invoice.amount_usdc;
   $("ck-to").textContent = invoice.pay_to;
   $("ck-wallet").href = invoice.eip681;
@@ -260,6 +299,21 @@ async function trackInvoice(id, { push = true } = {}) {
   };
   await read();
   pollTimer = setInterval(read, 5000);
+  // Back from Stripe: ask the desk to read the session now rather than wait for the
+  // webhook. A few tries, then the ordinary poll and the desk's own sweep carry on.
+  if (new URLSearchParams(location.search).get("card") === "return") {
+    for (const wait of [0, 3000, 8000, 20000]) {
+      setTimeout(async () => {
+        if (invoiceId !== id || !pollTimer) return;
+        try {
+          const invoice = await api(`/api/public/pay/invoices/${encodeURIComponent(id)}/card/refresh`, { method: "POST" });
+          if (!(await settleIfPaid(invoice))) paintInvoice(invoice);
+        } catch (err) {
+          // The poll keeps going; a refresh that failed is not a failed payment.
+        }
+      }, wait);
+    }
+  }
 }
 
 function paintGuide(guide) {
@@ -496,6 +550,19 @@ $("archive").addEventListener("click", async (event) => {
   URL.revokeObjectURL(url);
 });
 $("plans").addEventListener("click", async (event) => {
+  const cardPlan = event.target.dataset.cardPlan;
+  if (cardPlan) {
+    $("ck-err").textContent = "";
+    try {
+      const invoice = await api("/api/public/pay/card", { method: "POST", body: JSON.stringify({ plan: cardPlan }) });
+      // Remember the invoice in history first, so Back from Stripe lands on it.
+      history.pushState({}, "", `/pay/${invoice.id}`);
+      location.assign(invoice.card.checkout_url);
+    } catch (err) {
+      $("ck-err").textContent = err.message;
+    }
+    return;
+  }
   const plan = event.target.dataset.plan;
   if (!plan) return;
   $("ck-err").textContent = "";

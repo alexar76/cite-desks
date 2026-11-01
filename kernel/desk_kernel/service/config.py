@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     #: How often the settlement poll runs. This interval is the only thing standing
     #: between a buyer's USDC and their desk key, so it is seconds, not minutes.
     pay_scan_interval_seconds: int = 20
+    #: Card checkout through Stripe (service/card.py). Both empty = card closed. A test key
+    #: (sk_test_/rk_test_) opens only outside production, a live key only in production.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
     login_rate_limit: int = 20
     #: Proxies this service sits behind that append to X-Forwarded-For (our own web
     #: container counts as one). Everything further left is caller-supplied.

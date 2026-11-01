@@ -20,6 +20,20 @@ export function InvoicePage() {
   }, [invoiceId]);
 
   useEffect(() => {
+    // Back from Stripe: ask the desk to read the session now rather than wait for the webhook.
+    // A few tries, then the ordinary poll and the desk's own sweep carry on.
+    if (!invoiceId || new URLSearchParams(window.location.search).get("card") !== "return") return;
+    const timers = [0, 3000, 8000, 20000].map((wait) =>
+      window.setTimeout(() => {
+        void api.refreshCardInvoice(invoiceId).then(setInvoice).catch(() => undefined);
+      }, wait),
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [invoiceId]);
+
+  const isCard = invoice?.payment_method === "card_stripe";
+
+  useEffect(() => {
     if (!invoice || !invoice.claimable) return;
     const poll = window.setInterval(() => {
       void api.payInvoice(invoice.id).then(setInvoice).catch(() => undefined);
@@ -116,25 +130,34 @@ export function InvoicePage() {
                   <tr key={row.description}>
                     <td>{row.description}</td>
                     <td>${row.amount_usd}</td>
-                    <td>{row.amount_usdc} USDC</td>
+                    <td>{isCard ? `$${row.amount_usd}` : `${row.amount_usdc} USDC`}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="mono" style={{ fontSize: 28, margin: "18px 0 6px" }}>
-              {invoice.amount_usdc} USDC
+              {isCard ? `$${invoice.amount_usd} USD` : `${invoice.amount_usdc} USDC`}
             </p>
-            <p className="meta">
-              List ${invoice.amount_usd}. Send this exact amount on Base. Rounding will not match.
-              {invoice.late_grace_hours > 0 &&
-                ` A transfer that lands after the quote lapses still settles for ${invoice.late_grace_hours}h — you do not need a refund.`}
-            </p>
-            <p className="mono" style={{ fontSize: 12, wordBreak: "break-all", marginTop: 14 }}>
-              {invoice.pay_to}
-            </p>
+            {isCard ? (
+              <p className="meta">
+                Paid by card on Stripe&apos;s page; the desk never sees the card. The key appears here on its own.
+                {invoice.card?.test_mode && " Stripe test mode: test cards only, no real charge."}
+              </p>
+            ) : (
+              <>
+                <p className="meta">
+                  List ${invoice.amount_usd}. Send this exact amount on Base. Rounding will not match.
+                  {invoice.late_grace_hours > 0 &&
+                    ` A transfer that lands after the quote lapses still settles for ${invoice.late_grace_hours}h — you do not need a refund.`}
+                </p>
+                <p className="mono" style={{ fontSize: 12, wordBreak: "break-all", marginTop: 14 }}>
+                  {invoice.pay_to}
+                </p>
+              </>
+            )}
             <div className="hero-actions" style={{ marginTop: 14 }}>
-              <CopyButton value={invoice.pay_to} label="Copy address" />
-              <CopyButton value={invoice.amount_usdc} label="Copy amount" />
+              {!isCard && <CopyButton value={invoice.pay_to} label="Copy address" />}
+              {!isCard && <CopyButton value={invoice.amount_usdc} label="Copy amount" />}
               <CopyButton value={`${window.location.origin}${invoice.public_path}`} label="Copy invoice link" />
               <a className="btn" href={`/api/public/pay/invoices/${invoice.id}/pdf`}>
                 Download PDF
@@ -143,7 +166,25 @@ export function InvoicePage() {
             {invoice.manual_reconciliation_needed && (
               <p role="status">This legacy quote needs operator reconciliation. Do not send another payment; keep your invoice and transaction hash.</p>
             )}
-            {invoice.claimable && (
+            {isCard && invoice.status === "pending" && invoice.card?.checkout_url && (
+              <div className="hero-actions" style={{ marginTop: 12 }}>
+                <a className="btn btn-ember" href={invoice.card.checkout_url}>
+                  Continue to card payment
+                </a>
+              </div>
+            )}
+            {isCard && invoice.status === "pending" && !invoice.card?.checkout_url && (
+              <p className="meta" style={{ marginTop: 12 }}>Waiting for the card payment. This page settles on its own.</p>
+            )}
+            {isCard && (invoice.status === "refunded" || invoice.status === "disputed") && (
+              <p className="meta" style={{ marginTop: 12 }}>Refunded. This desk key no longer works.</p>
+            )}
+            {isCard && (invoice.status === "expired" || invoice.status === "failed") && (
+              <p className="meta" style={{ marginTop: 12 }}>
+                This card checkout lapsed. Nothing was charged. <Link to="/pay">Place a new order</Link>.
+              </p>
+            )}
+            {!isCard && invoice.claimable && (
               <div className="hero-actions" style={{ marginTop: 12 }}>
                 <button className="btn btn-ember" type="button" onClick={() => void walletPay()} disabled={busy}>
                   Pay with wallet
@@ -185,7 +226,7 @@ export function InvoicePage() {
                 </a>
               </p>
             )}
-            {invoice.status === "expired" && (
+            {!isCard && invoice.status === "expired" && (
               <p className="meta" style={{ marginTop: 12 }}>
                 {invoice.claimable ? (
                   <>

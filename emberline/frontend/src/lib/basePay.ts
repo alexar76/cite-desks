@@ -21,6 +21,8 @@ export type PayRail = {
   fixture?: boolean;
   closed_reason?: string;
   methods?: PayMethod[];
+  /** Card checkout through Stripe; closed in demo mode and without keys. */
+  card?: { enabled: boolean; provider: string; currency: string; test_mode: boolean; closed_reason: string };
   plans: Record<string, { name: string; price_usd: number; days: number; watches: number; runs: number }>;
 };
 
@@ -33,7 +35,7 @@ export type Invoice = {
   days: number;
   payment_method: string;
   payment_method_label: string;
-  line_items: { description: string; qty: number; amount_usd: number; amount_usdc: string }[];
+  line_items: { description: string; qty: number; amount_usd: number; amount_usdc?: string }[];
   amount_usd: number;
   chain_id: number;
   token: string;
@@ -57,6 +59,9 @@ export type Invoice = {
   public_path: string;
   desk_key: string | null;
   fixture?: boolean;
+  /** Present on a `card_stripe` invoice, which has no chain fields. */
+  card?: { provider: string; checkout_url: string | null; test_mode: boolean; state: string };
+  paid_at?: string | null;
 };
 
 const BASE_CHAIN_ID = "0x2105";
