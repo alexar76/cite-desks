@@ -163,36 +163,77 @@ async function loadDesk() {
 let invoiceId = null;
 let pollTimer = null;
 
+// The pricing block is the shell's own: it shows on every desk, whatever kernel API version serves it, so its
+// copy lives here rather than in the API's catalogs. A demo desk shows the plans as a model for the desk a visitor
+// could run (the plans come from /api/public/status in every mode); a live desk sells them.
+const PRICING = {
+  en: { kicker: "Commercial", h2: "Subscription + metered rails.", per_mo: "/mo", launch: "Launch your own desk",
+    demo_sub: "A pricing model for the desk you could run. Fork this desk, set your own plans, and sell evidence subscriptions to your customers. These are example prices, not an earnings promise. This demo does not accept payments.",
+    demo: ["Prepaid keys for your customers", "Subscriptions with usage limits", "Metered Hub costs for each brief"] },
+  nl: { kicker: "Commercieel", h2: "Abonnement + betalen per gebruik.", per_mo: "/mnd", launch: "Start je eigen desk",
+    demo_sub: "Een prijsmodel voor de desk die je zelf zou kunnen draaien. Fork deze desk, stel je eigen plannen in en verkoop bewijsabonnementen aan je klanten. Dit zijn voorbeeldprijzen, geen inkomstenbelofte. Deze demo neemt geen betalingen aan.",
+    demo: ["Prepaid keys voor je klanten", "Abonnementen met gebruikslimieten", "Hub-kosten afgerekend per brief"] },
+  fr: { kicker: "Offre commerciale", h2: "Abonnement + facturation à l’usage.", per_mo: "/mois", launch: "Lancez votre propre desk",
+    demo_sub: "Un modèle de prix pour le desk que vous pourriez exploiter. Forkez ce desk, fixez vos propres formules et vendez des abonnements de preuves à vos clients. Ce sont des prix d’exemple, pas une promesse de revenus. Cette démo n’accepte aucun paiement.",
+    demo: ["Clés prépayées pour vos clients", "Abonnements avec limites d’usage", "Coûts Hub facturés à chaque brief"] },
+  de: { kicker: "Kommerziell", h2: "Abo + nutzungsbasierte Abrechnung.", per_mo: "/Monat", launch: "Eigenen Desk starten",
+    demo_sub: "Ein Preismodell für den Desk, den du selbst betreiben könntest. Forke diesen Desk, lege eigene Pläne fest und verkaufe Nachweis-Abos an deine Kunden. Das sind Beispielpreise, kein Ertragsversprechen. Diese Demo nimmt keine Zahlungen an.",
+    demo: ["Prepaid-Keys für deine Kunden", "Abos mit Nutzungsgrenzen", "Hub-Kosten je Brief abgerechnet"] },
+  es: { kicker: "Comercial", h2: "Suscripción + pago por uso.", per_mo: "/mes", launch: "Lanza tu propio desk",
+    demo_sub: "Un modelo de precios para el desk que podrías operar. Haz un fork de este desk, fija tus propios planes y vende suscripciones de evidencias a tus clientes. Son precios de ejemplo, no una promesa de ingresos. Esta demo no acepta pagos.",
+    demo: ["Keys prepago para tus clientes", "Suscripciones con límites de uso", "Costes de Hub medidos por cada brief"] },
+  fi: { kicker: "Kaupallinen", h2: "Tilaus + käytön mukaan laskutus.", per_mo: "/kk", launch: "Käynnistä oma desk",
+    demo_sub: "Hinnoittelumalli deskille, jota voisit itse pyörittää. Forkkaa tämä desk, aseta omat tilauksesi ja myy näyttötilauksia asiakkaillesi. Hinnat ovat esimerkkejä, eivät tuottolupaus. Tämä demo ei ota vastaan maksuja.",
+    demo: ["Ennakkoon maksetut keyt asiakkaillesi", "Tilaukset käyttörajoin", "Hubin kulut laskutetaan briefikohtaisesti"] },
+  nb: { kicker: "Kommersielt", h2: "Abonnement + betaling etter bruk.", per_mo: "/mnd", launch: "Start din egen desk",
+    demo_sub: "En prismodell for desken du selv kunne drive. Fork denne desken, sett dine egne planer og selg bevisabonnementer til kundene dine. Dette er eksempelpriser, ikke et inntektsløfte. Denne demoen tar ikke imot betaling.",
+    demo: ["Forhåndsbetalte nøkler til kundene dine", "Abonnementer med bruksgrenser", "Hub-kostnader målt per brief"] },
+};
+const DESK_REPO = "https://github.com/alexar76/cite-desks";
+
+function pricingCopy() {
+  const lang = (document.documentElement.lang || "en").toLowerCase().split("-")[0];
+  return PRICING[lang] || PRICING.en;
+}
+
 function paintPlans() {
   const rail = status.pay || {};
   const card = rail.card || {};
+  const copy = pricingCopy();
+  const demo = Boolean(status.demo);
+  const open = Boolean(rail.enabled || card.enabled);
   const host = $("plans");
-  if (!rail.enabled && !card.enabled) {
-    host.innerHTML = "";
-    const closed = $("pay-closed");
-    closed.textContent = [ui.pay_closed, rail.closed_reason].filter(Boolean).join(" ");
-    closed.hidden = false;
-    return;
-  }
-  $("pay-closed").hidden = true;
+  const heading = $("pricing-h2"); // absent in an index.html a browser cached from before this block
+  if (heading) heading.textContent = copy.h2;
+  const kicker = document.querySelector("#buy [data-i=pay_kicker]");
+  if (kicker && demo) kicker.textContent = copy.kicker;
   const lede = document.querySelector("#buy [data-i=pay_lede]");
-  if (lede && card.enabled) lede.textContent = rail.enabled ? (ui.pay_lede_card || "") : (ui.pay_lede_card_only || "");
+  if (lede && demo) lede.textContent = copy.demo_sub;
+  else if (lede && card.enabled) lede.textContent = rail.enabled ? (ui.pay_lede_card || "") : (ui.pay_lede_card_only || "");
+  // A live desk whose checkout is shut says why; a demo already says so in its lede and banner.
+  const closed = $("pay-closed");
+  closed.hidden = open || demo;
+  if (!open && !demo) closed.textContent = [ui.pay_closed, rail.closed_reason].filter(Boolean).join(" ");
   // A sandbox desk says so on every plan: nobody should think a test card bought anything.
   const test = card.enabled && card.test_mode ? `<p class="meta">${esc(ui.pay_card_test || "Stripe test mode")}</p>` : "";
-  host.innerHTML = Object.entries(rail.plans || {}).map(([code, plan]) =>
-    `<div class="plan">
+  host.innerHTML = Object.entries(rail.plans || {}).map(([code, plan]) => {
+    const per = Number(plan.days) === 30 ? copy.per_mo : `/${esc(plan.days)} d`;
+    const num = (n) => esc(Number(n).toLocaleString(document.documentElement.lang || "en"));
+    const quota = `${num(plan.watches)} ${esc(ui.pay_plan_watches || "watches")} · ${num(plan.runs)} ${esc(ui.pay_plan_runs || "runs / month")}`;
+    const points = demo ? copy.demo.map((line) => `<li>${esc(line)}</li>`).join("") : `<li>${esc(plan.days)} days</li>`;
+    const actions = demo
+      ? `<a class="btn btn-accent" href="${DESK_REPO}">${esc(copy.launch)}</a>`
+      : (card.enabled ? `<button class="btn btn-accent" data-card-plan="${esc(code)}">${esc(ui.pay_card || "Pay by card")}</button>` : "") +
+        (rail.enabled ? `<button class="btn${card.enabled ? "" : " btn-accent"}" data-plan="${esc(code)}">${esc(card.enabled ? (ui.pay_usdc || "Pay USDC") : (ui.pay_buy || "Buy"))}</button>` : "");
+    return `<div class="plan">
       <h3>${esc(plan.name)}</h3>
-      <div class="price">$${esc(plan.price_usd)}</div>
-      <ul>
-        <li>${esc(plan.watches)} ${esc(ui.pay_plan_watches || "watches")}</li>
-        <li>${esc(plan.runs)} ${esc(ui.pay_plan_runs || "runs / month")}</li>
-        <li>${esc(plan.days)} days</li>
-      </ul>
-      ${card.enabled ? `<button class="btn btn-accent" data-card-plan="${esc(code)}">${esc(ui.pay_card || "Pay by card")}</button>` : ""}
-      ${rail.enabled ? `<button class="btn${card.enabled ? "" : " btn-accent"}" data-plan="${esc(code)}">${esc(card.enabled ? (ui.pay_usdc || "Pay USDC") : (ui.pay_buy || "Buy"))}</button>` : ""}
+      <div class="price">$${esc(plan.price_usd)}<span class="per">${esc(per)}</span></div>
+      <p class="plan-meta">${quota}</p>
+      <ul>${points}</ul>
+      ${actions}
       ${test}
-    </div>`
-  ).join("");
+    </div>`;
+  }).join("");
 }
 
 function stamp(iso) {

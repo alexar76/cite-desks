@@ -324,6 +324,8 @@ td { padding: 10px 7px; border-bottom: 1px solid var(--line); vertical-align: to
 .plan:nth-child(2)::before { content: "POPULAR"; position: absolute; top: 0; right: 0; padding: 6px 9px; background: var(--accent); color: var(--accent-ink); font-family: var(--mono); font-size: 9px; letter-spacing: .1em; }
 .plan h3 { font-family: var(--serif); font-weight: 400; margin: 0; font-size: 25px; }
 .plan .price { font-family: var(--serif); font-size: 42px; color: var(--accent-2); }
+.plan .price .per { font-family: var(--sans); font-size: 15px; color: var(--muted); margin-left: 3px; }
+.plan .plan-meta { color: var(--muted); font-size: 13px; margin: 0; }
 .plan ul { margin: 0; padding-left: 18px; color: var(--bone-dim); font-size: 13px; line-height: 1.7; }
 .checkout { max-width: 680px; display: grid; gap: 12px; transform: none; }
 .checkout:hover { transform: translateY(-3px); }
