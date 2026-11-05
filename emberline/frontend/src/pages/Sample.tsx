@@ -51,13 +51,14 @@ export function Sample() {
   return (
     <>
       <PageMeta
-        title="Sample brief — Emberline"
-        description="Read a fixture Emberline evidence brief and download the cite pack. Detections you can cite — not perimeters we invent."
+        title="Sample wildfire evidence brief — Emberline"
+        canonical="https://emberlinedesk.com/sample"
+        description="Inspect the Emberline sample wildfire evidence brief for the CA Transmission Corridor and download its PDF, thermal detections, signed receipt and file hashes."
       />
       <SiteNav />
       <section className="section">
         <div className="kicker">Sample artifact</div>
-        <h2 className="serif">A brief you can cite.</h2>
+        <h1 className="serif">Sample wildfire evidence brief</h1>
         <p className="sub">
           Fixture tape for a named box (CA Transmission Corridor). This is not a live Hub invoke.
           Download the pack to inspect the evidence, receipt, and file hashes.

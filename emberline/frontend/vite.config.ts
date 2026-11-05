@@ -42,6 +42,7 @@ export default defineConfig({
       },
     }),
   ],
+  build: { rollupOptions: { input: ["index.html", "sample.html"] } },
   server: {
     port: 5173,
     proxy: {

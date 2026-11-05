@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sample wildfire evidence brief — Emberline</title>
+    <meta name="description" content="Inspect the Emberline sample wildfire evidence brief for the CA Transmission Corridor and download its PDF, thermal detections, signed receipt and file hashes." />
+    <link rel="canonical" href="https://emberlinedesk.com/sample" />
+    <meta property="og:title" content="Sample wildfire evidence brief — Emberline" />
+    <meta property="og:description" content="Explore the CA Transmission Corridor example and download the evidence files." />
+    <meta property="og:url" content="https://emberlinedesk.com/sample" />
+    <link rel="icon" href="/favicon.svg" />
+    <link href="/fonts/fonts.css" rel="stylesheet" />
+    <style>
+      html { color-scheme: dark; }
+      body { margin: 0; background: #1a1612; color: #f6efe6; }
+      .sample-fallback { max-width: 48rem; margin: 3rem auto; padding: 0 1.5rem; font: 1rem/1.6 system-ui, sans-serif; }
+      .sample-fallback a { color: #ffc19e; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <main class="sample-fallback">
+        <nav aria-label="Emberline"><a href="/">Emberline</a> · <a href="/guide">Guide</a></nav>
+        <h1>Sample wildfire evidence brief</h1>
+        <p>This example covers the CA Transmission Corridor and uses a prepared fixture. It shows how a brief records thermal detection points, compares them with the previous run and preserves the evidence used to produce the report.</p>
+        <h2>CA Transmission Corridor</h2>
+        <dl>
+          <dt>Evidence</dt><dd>Detection coordinates, brightness and the recorded weather for the watch area.</dd>
+          <dt>Change from the prior run</dt><dd>Points that appeared, disappeared, brightened or dimmed.</dd>
+          <dt>Evidence trail</dt><dd>The normalized brief, raw Hub payloads, receipt and SHA-256 file hashes.</dd>
+        </dl>
+        <p><a href="/api/public/sample-cite-pack">Download the sample cite pack</a> to inspect the PDF, JSON and hashes.</p>
+      </main>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

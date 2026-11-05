@@ -37,6 +37,7 @@ export function Landing() {
     <>
       <PageMeta
         title="Emberline — Evidence for the box you watch"
+        canonical="https://emberlinedesk.com/"
         description="B2B fire evidence desk. Scheduled LIVE thermal detections, bounded weather, signed receipts, and a citeable archive. Not a perimeter. Not a forecast."
       />
       <SiteNav />
