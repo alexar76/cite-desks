@@ -2,7 +2,7 @@
 #   cd /opt/mail && docker compose up -d
 services:
   mail:
-    image: foxcpp/maddy:0.7
+    image: foxcpp/maddy:0.9.7
     container_name: emberline-mail
     restart: unless-stopped
     mem_limit: 192m

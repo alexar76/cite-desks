@@ -1,4 +1,4 @@
-FROM nginx:1.27-alpine
+FROM nginx:1.30-alpine
 COPY kernel/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY kernel/web/index.html /usr/share/nginx/html/index.html
 COPY kernel/web/styles.css /usr/share/nginx/html/styles.css
