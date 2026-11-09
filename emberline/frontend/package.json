@@ -13,26 +13,26 @@
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "@react-three/postprocessing": "^3.2.2",
-    "framer-motion": "^14.6.0",
+    "framer-motion": "^14.9.1",
     "leaflet": "^1.9.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-leaflet": "^5.0.0",
-    "react-router-dom": "^7.18.0",
-    "three": "^0.186.1",
+    "react-router-dom": "^7.18.5",
+    "three": "^0.187.0",
     "deepmerge": "file:vendor/aimarket-deepmerge-safe-1.0.0.tgz"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.22",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@types/three": "^0.186.0",
-    "@vitejs/plugin-react": "^6.1.2",
+    "@types/three": "^0.187.0",
+    "@vitejs/plugin-react": "^6.2.1",
     "happy-dom": "^21.0.4",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5",
+    "vite": "^8.3.6",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "overrides": {
     "serialize-javascript": "^7.1.3",
