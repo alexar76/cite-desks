@@ -20,7 +20,7 @@
 
 **Fire Evidence Desk.** Independent B2B monitoring for the box you watch.
 
-[![CI](https://img.shields.io/badge/ci-pytest%20%2B%20vitest-2ea44f)](.github/workflows/ci.yml)
+[![CI](https://img.shields.io/badge/ci-pytest%20%2B%20vitest-2ea44f)](../.github/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/run-docker%20compose-2496ed)](docker-compose.yml)
 
