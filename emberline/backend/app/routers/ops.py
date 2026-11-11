@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..ops import dashboard
 from ..security import (
+    client_ip,
     OPS_COOKIE_NAME,
     allow_login_attempt,
     create_ops_token,
@@ -26,7 +27,7 @@ def login(body: OpsLoginIn, request: Request, response: Response) -> dict:
     expected = ops_secret()
     if not expected:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "ops is not configured")
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     if not allow_login_attempt(ip):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many sign-in attempts")
     if not secret_matches(body.secret.strip(), expected):

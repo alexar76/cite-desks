@@ -123,16 +123,51 @@ def allow_login_attempt(ip: str) -> bool:
         return True
 
 
-def allow_pay_attempt(ip: str, *, limit: int = 8) -> bool:
+def allow_pay_attempt(ip: str, *, limit: int = 8, bucket: str = "") -> bool:
     now = time.time()
+    key = f"{bucket}:{ip}" if bucket else ip
     with _login_lock:
-        recent = [stamp for stamp in _pay_hits.get(ip, []) if now - stamp < 900]
+        recent = [stamp for stamp in _pay_hits.get(key, []) if now - stamp < 900]
         if len(recent) >= limit:
-            _pay_hits[ip] = recent
+            _pay_hits[key] = recent
             return False
         recent.append(now)
-        _pay_hits[ip] = recent
+        _pay_hits[key] = recent
         return True
+
+
+def _from_local_proxy(peer: str) -> bool:
+    """Could the TCP peer be our own reverse proxy (this host or its docker network)?"""
+    import ipaddress
+
+    try:
+        addr = ipaddress.ip_address((peer or "").split("%")[0])
+    except ValueError:
+        return False
+    return addr.is_loopback or addr.is_private or addr.is_link_local
+
+
+def client_ip(request: Request) -> str:
+    """The visitor the rate limiters bucket on — the desk kernel's rule.
+
+    Behind the web container every TCP peer is nginx, so ``request.client.host`` put every
+    buyer in ONE bucket: eight invoices from anybody closed checkout for everybody for 15
+    minutes (audit 2026-11-11, desks-stripe-3). X-Forwarded-For is read from the RIGHT,
+    skipping our own proxies (EMBERLINE_TRUSTED_PROXY_HOPS, default 1), and only when the
+    peer is a local proxy: anyone else could write the header themselves.
+    """
+    import os
+
+    peer = request.client.host if request.client else ""
+    chain = [p.strip() for p in (request.headers.get("x-forwarded-for") or "").split(",") if p.strip()]
+    if chain and _from_local_proxy(peer):
+        try:
+            hops = max(0, int(os.getenv("EMBERLINE_TRUSTED_PROXY_HOPS", "1")))
+        except ValueError:
+            hops = 1
+        idx = len(chain) - 1 - hops
+        return chain[max(0, min(idx, len(chain) - 1))][:64]
+    return peer or "unknown"
 
 
 def reset_rate_limits() -> None:

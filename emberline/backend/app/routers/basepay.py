@@ -12,7 +12,7 @@ from ..config import get_settings
 from ..db import get_db
 from ..models import BaseInvoice
 from ..plans import PLANS
-from ..security import allow_pay_attempt
+from ..security import allow_pay_attempt, client_ip
 
 router = APIRouter(prefix="/api/public/pay", tags=["pay-public"])
 
@@ -43,7 +43,7 @@ def _place_order(body: InvoiceIn, request: Request, db: Session) -> dict:
             status.HTTP_503_SERVICE_UNAVAILABLE,
             basepay.rail_closed_reason() or "USDC Base rail is not configured",
         )
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     if not allow_pay_attempt(ip):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many invoices from this address")
     try:
@@ -57,7 +57,7 @@ def _place_order(body: InvoiceIn, request: Request, db: Session) -> dict:
 
 def _place_card_order(body: InvoiceIn, request: Request, db: Session) -> dict:
     """A card invoice and its Stripe Checkout Session; the buyer goes to `card.checkout_url`."""
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     if not allow_pay_attempt(ip):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many invoices from this address")
     try:
@@ -109,7 +109,12 @@ def invoice_pdf(invoice_id: str, db: Session = Depends(get_db)) -> Response:
 
 
 @router.post("/invoices/{invoice_id}/confirm")
-def confirm_invoice(invoice_id: str, body: ConfirmIn, db: Session = Depends(get_db)) -> dict:
+def confirm_invoice(invoice_id: str, body: ConfirmIn, request: Request, db: Session = Depends(get_db)) -> dict:
+    # Each confirm is a chain read: unlimited and unauthenticated, it could spend the desk's
+    # RPC quota and stall the unattended settlement scan (audit 2026-11-11, desks-stripe-3).
+    # The kernel's own limit for the same route.
+    if not allow_pay_attempt(client_ip(request), limit=30, bucket="confirm"):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many confirmations from this address")
     invoice = db.get(BaseInvoice, invoice_id)
     if invoice is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "invoice not found")
@@ -125,7 +130,7 @@ def confirm_invoice(invoice_id: str, body: ConfirmIn, db: Session = Depends(get_
 @router.post("/invoices/{invoice_id}/card/refresh")
 def refresh_card_invoice(invoice_id: str, request: Request, db: Session = Depends(get_db)) -> dict:
     """The buyer is back from Stripe before the webhook: ask Stripe now (at most every 5 s)."""
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     if not allow_pay_attempt(ip, limit=60):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many refresh attempts")
     invoice = db.get(BaseInvoice, invoice_id)

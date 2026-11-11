@@ -28,7 +28,7 @@ from typing import Any
 from sqlalchemy import and_, case, or_
 from sqlalchemy.orm import Session
 
-from desk_kernel import chain
+from desk_kernel import chain, scan_cursor
 from desk_kernel.chain import USDC_DECIMALS, ChainConfig, Rpc, RpcError, Transfer, format_usdc
 from desk_kernel.demo import DEMO_CHECKOUT_CLOSED, is_demo
 from desk_kernel.ids import hash_desk_key, new_desk_key, new_id
@@ -300,7 +300,7 @@ def settle(db: Session, invoice: BaseInvoice, transfer: Transfer) -> BaseInvoice
             return invoice
         raise
     invoice.status = "paid"
-    invoice.tx_hash = transfer.tx_hash
+    invoice.tx_hash = chain.payment_ref(transfer)
     invoice.from_address = transfer.frm
     invoice.block_number = transfer.block_number
     invoice.paid_at = datetime.now(timezone.utc)
@@ -311,11 +311,17 @@ def settle(db: Session, invoice: BaseInvoice, transfer: Transfer) -> BaseInvoice
     return invoice
 
 
+def _settled_already(db: Session, transfer: Transfer) -> bool:
+    """This Transfer log (or, for a row from before log keys, its whole transaction) paid an invoice."""
+    return db.query(BaseInvoice).filter(
+        BaseInvoice.tx_hash.in_(chain.payment_refs_taken(transfer))).first() is not None
+
+
 def match_invoice(db: Session, transfer: Transfer) -> BaseInvoice | None:
     now = datetime.now(timezone.utc)
     if quote_needs_reconciliation(transfer.amount_raw, get_settings().desk_id):
         return None
-    if db.query(BaseInvoice).filter(BaseInvoice.tx_hash == transfer.tx_hash).one_or_none():
+    if _settled_already(db, transfer):
         return None
     # `first`, not `one_or_none`: two rows can still answer to one amount (an expired
     # invoice inside its grace plus a fresh quote). A buyer whose quote is still live
@@ -363,7 +369,10 @@ def scan_payments(db: Session, rpc: Rpc | None = None) -> int:
     db.commit()
     head = chain.current_block(client)
     settled_head = max(0, head - cfg.confirmations)
-    start = max(0, settled_head - chain.LOOKBACK_BLOCKS)
+    # From where the last finished scan stopped, not just the last ~73 min (desks-stripe-8).
+    settings = get_settings()
+    start = scan_cursor.scan_start(db, settled_head, max_catchup_blocks=scan_cursor.catchup_blocks(
+        invoice_ttl_minutes=settings.pay_invoice_ttl_minutes, late_grace_hours=settings.pay_late_grace_hours))
     if settled_head < start:
         return 0
     settled = 0
@@ -378,6 +387,7 @@ def scan_payments(db: Session, rpc: Rpc | None = None) -> int:
         settle(db, invoice, transfer)
         settled += 1
     # Only after the walk finished: a half-scanned window is not a scan.
+    scan_cursor.save_cursor(db, settled_head)
     _last_scan.update(at=datetime.now(timezone.utc), head=head)
     _last_scan["settled"] += settled
     if settled:
@@ -411,7 +421,9 @@ def confirm_invoice(db: Session, invoice: BaseInvoice, tx_hash: str, rpc: Rpc | 
     hits = [row for row in chain.transfers_from_receipt(cfg, receipt) if row.amount_raw == invoice.amount_raw]
     if not hits:
         raise ValueError("transaction does not pay this invoice")
-    if db.query(BaseInvoice).filter(BaseInvoice.tx_hash == hits[0].tx_hash).one_or_none():
+    # Each Transfer log pays one invoice: a batched transaction may carry several (desks-stripe-5).
+    hits = [row for row in hits if not _settled_already(db, row)]
+    if not hits:
         raise ValueError("that transfer already settled an invoice")
     # The scan only ever reads a window ending at the chain head, so an old transfer can
     # only reach an invoice through a hand-supplied hash. Bound it to the invoice's own
@@ -513,10 +525,11 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict:
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
         "expires_at": invoice.expires_at.isoformat() if invoice.expires_at else None,
         "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
-        "tx_hash": invoice.tx_hash,
+        "tx_hash": chain.ref_tx_hash(invoice.tx_hash),
+        "log_index": chain.ref_log_index(invoice.tx_hash),
         "from_address": invoice.from_address,
         "explorer_address": f"{explorer}/address/{invoice.pay_to}",
-        "explorer_tx": f"{explorer}/tx/{invoice.tx_hash}" if invoice.tx_hash else None,
+        "explorer_tx": f"{explorer}/tx/{chain.ref_tx_hash(invoice.tx_hash)}" if invoice.tx_hash else None,
         "late": bool(paid_at and paid_at > _aware(invoice.expires_at)),
         "late_grace_hours": int(settings.pay_late_grace_hours),
         "claimable": not manual and invoice.status in ("pending", "expired") and deadline > now,

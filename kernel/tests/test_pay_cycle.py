@@ -617,3 +617,54 @@ def test_a_transfer_older_than_the_invoice_does_not_settle_it(client: TestClient
     )
     assert _scan(get_fixture_rpc()) == 0
     assert client.get(f"/api/public/pay/invoices/{invoice['id']}").json()["status"] == "pending"
+
+
+# --------------------------------------------------------------- audit 2026-11-11
+
+
+def test_two_invoices_paid_by_one_batched_transaction_both_settle(client: TestClient) -> None:
+    """desks-stripe-5: the bare tx hash was the payment key, so the second Transfer log of one
+    batched transaction (a disperse contract, a Safe multisend) was discarded."""
+    a = client.post("/api/public/pay/invoices", json={"plan": "solo"}).json()
+    b = client.post("/api/public/pay/invoices", json={"plan": "solo"}).json()
+    rpc = get_fixture_rpc()
+    first = rpc.inject_usdc_transfer(token=get_settings().pay_usdc_address, pay_to=a["pay_to"],
+                                     amount_raw=int(a["amount_raw"]))
+    entry = dict(rpc._logs[-1])
+    entry.update(logIndex="0x1", data=hex(int(b["amount_raw"])))
+    rpc._logs.append(entry)
+    rpc._receipts[first.tx_hash]["logs"].append(entry)
+    assert _scan(rpc) == 2
+    for inv in (a, b):
+        view = client.get(f"/api/public/pay/invoices/{inv['id']}").json()
+        assert view["status"] == "paid" and view["tx_hash"] == first.tx_hash
+    assert sorted(client.get(f"/api/public/pay/invoices/{i['id']}").json()["log_index"] for i in (a, b)) == [0, 1]
+    assert _scan(rpc) == 0, "and neither log pays anything twice"
+
+
+def test_a_payment_made_while_the_desk_was_down_is_still_found(client: TestClient) -> None:
+    """desks-stripe-8: the scan looked back a fixed ~73 min and kept no cursor."""
+    rpc = get_fixture_rpc()
+    assert _scan(rpc) == 0                         # a scan before the outage sets the cursor
+    invoice = client.post("/api/public/pay/invoices", json={"plan": "solo"}).json()
+    _pay_on_chain(rpc, invoice)
+    rpc.head += chain.LOOKBACK_BLOCKS + 500        # the desk was down past the old window
+    assert _scan(rpc) == 1
+    assert client.get(f"/api/public/pay/invoices/{invoice['id']}").json()["status"] == "paid"
+
+
+def test_the_catch_up_covers_the_whole_claim_window() -> None:
+    """Review of 2026-11-11: a fixed 24 h catch-up fell short of TTL + 24 h grace."""
+    from desk_kernel import scan_cursor
+
+    blocks = scan_cursor.catchup_blocks(invoice_ttl_minutes=45, late_grace_hours=24)
+    assert blocks * scan_cursor.SECONDS_PER_BLOCK >= (45 * 60 + 24 * 3600)
+    db = SessionLocal()
+    try:
+        scan_cursor.save_cursor(db, 1_000)
+        head = 1_000 + blocks + 10
+        assert scan_cursor.scan_start(db, head, max_catchup_blocks=blocks) == head - blocks
+        # a scan shortly after the cursor reads the usual lookback window, from block 0 here
+        assert scan_cursor.scan_start(db, 1_500, max_catchup_blocks=blocks) == max(0, 1_500 - chain.LOOKBACK_BLOCKS)
+    finally:
+        db.close()

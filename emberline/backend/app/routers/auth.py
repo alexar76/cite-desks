@@ -10,6 +10,7 @@ from ..models import BaseInvoice, DeskGrant, User, Workspace
 from ..plans import PLANS, plan_is_expired
 from ..schemas import LoginIn, TokenOut
 from ..security import (
+    client_ip,
     allow_login_attempt,
     create_token,
     current_user,
@@ -29,7 +30,7 @@ class RedeemIn(BaseModel):
 
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)) -> TokenOut:
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     if not allow_login_attempt(ip):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too many sign-in attempts")
     user = db.query(User).filter(User.email == str(body.email).lower()).one_or_none()

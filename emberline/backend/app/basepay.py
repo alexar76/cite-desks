@@ -17,7 +17,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from desk_kernel import chain
+from desk_kernel import chain, scan_cursor
 from desk_kernel.chain import (
     LOG_WINDOW_BLOCKS,
     LOOKBACK_BLOCKS,
@@ -448,10 +448,11 @@ def invoice_view(invoice: BaseInvoice, db: Session | None = None) -> dict[str, A
         "created_at": invoice.created_at.isoformat() if invoice.created_at else None,
         "expires_at": invoice.expires_at.isoformat() if invoice.expires_at else None,
         "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
-        "tx_hash": invoice.tx_hash,
+        "tx_hash": chain.ref_tx_hash(invoice.tx_hash),
+        "log_index": chain.ref_log_index(invoice.tx_hash),
         "from_address": invoice.from_address,
         "explorer_address": f"{explorer}/address/{invoice.pay_to}",
-        "explorer_tx": f"{explorer}/tx/{invoice.tx_hash}" if invoice.tx_hash else None,
+        "explorer_tx": f"{explorer}/tx/{chain.ref_tx_hash(invoice.tx_hash)}" if invoice.tx_hash else None,
         "confirmations_required": int(settings.pay_base_confirmations),
         "late": bool(paid_at and paid_at > _aware(invoice.expires_at)),
         "late_grace_hours": int(settings.pay_late_grace_hours),
@@ -481,7 +482,7 @@ def settle(db: Session, invoice: BaseInvoice, transfer: Transfer) -> BaseInvoice
             return invoice
         raise
     invoice.status = "paid"
-    invoice.tx_hash = transfer.tx_hash
+    invoice.tx_hash = chain.payment_ref(transfer)
     invoice.from_address = transfer.frm
     invoice.block_number = transfer.block_number
     invoice.paid_at = datetime.now(timezone.utc)
@@ -566,11 +567,17 @@ def transfers_from_receipt(receipt: dict[str, Any]) -> list[Transfer]:
     return chain.transfers_from_receipt(chain_config(), receipt)
 
 
+def _settled_already(db: Session, transfer: Transfer) -> bool:
+    """This Transfer log (or, for a row from before log keys, its whole transaction) paid an invoice."""
+    return db.query(BaseInvoice).filter(
+        BaseInvoice.tx_hash.in_(chain.payment_refs_taken(transfer))).first() is not None
+
+
 def match_invoice(db: Session, transfer: Transfer) -> BaseInvoice | None:
     now = datetime.now(timezone.utc)
     if quote_needs_reconciliation(transfer.amount_raw, "emberline"):
         return None
-    if db.query(BaseInvoice).filter(BaseInvoice.tx_hash == transfer.tx_hash).one_or_none():
+    if _settled_already(db, transfer):
         return None
     # `first`, not `one_or_none`: invoices written before the grace existed
     # reused amounts freely, so two rows can still answer to one transfer. A
@@ -624,7 +631,9 @@ def confirm_invoice(db: Session, invoice: BaseInvoice, tx_hash: str, rpc: Rpc | 
     hits = [row for row in transfers_from_receipt(receipt) if row.amount_raw == invoice.amount_raw]
     if not hits:
         raise ValueError("transaction does not pay this invoice")
-    if db.query(BaseInvoice).filter(BaseInvoice.tx_hash == hits[0].tx_hash).one_or_none():
+    # Each Transfer log pays one invoice: a batched transaction may carry several (desks-stripe-5).
+    hits = [row for row in hits if not _settled_already(db, row)]
+    if not hits:
         raise ValueError("that transfer already settled an invoice")
     # The scan only ever reads a window ending at the chain head, so an old
     # transfer can only reach an invoice through a hand-supplied hash. Bound it
@@ -646,7 +655,10 @@ def scan_payments(db: Session, rpc: Rpc | None = None) -> int:
     head = current_block(rpc)
     needed = int(get_settings().pay_base_confirmations)
     settled_head = max(0, head - needed)
-    start = max(0, settled_head - LOOKBACK_BLOCKS)
+    # From where the last finished scan stopped, not just the last ~73 min (desks-stripe-8).
+    settings = get_settings()
+    start = scan_cursor.scan_start(db, settled_head, max_catchup_blocks=scan_cursor.catchup_blocks(
+        invoice_ttl_minutes=settings.pay_invoice_ttl_minutes, late_grace_hours=settings.pay_late_grace_hours))
     if settled_head < start:
         return 0
     settled = 0
@@ -660,6 +672,7 @@ def scan_payments(db: Session, rpc: Rpc | None = None) -> int:
         settle(db, invoice, transfer)
         settled += 1
     # Only after the walk finished: a half-scanned window is not a scan.
+    scan_cursor.save_cursor(db, settled_head)
     _last_scan.update(at=datetime.now(timezone.utc), head=head)
     _last_scan["settled"] += settled
     if settled:

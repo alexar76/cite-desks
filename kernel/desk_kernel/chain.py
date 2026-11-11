@@ -216,6 +216,37 @@ class Transfer:
     log_index: int
 
 
+def payment_ref(transfer: Transfer) -> str:
+    """What a settled invoice records as its payment: the transaction AND the log.
+
+    The bare transaction hash used to be the key, so two invoices paid by two Transfer logs of
+    one transaction (a batched withdrawal, a Safe multisend) settled only the first; the other
+    buyer's USDC sat in the treasury with no key (audit 2026-11-11, desks-stripe-5). A row
+    written before this holds the bare hash; its log is unknown, so that whole transaction
+    still counts as used (``payment_refs_taken``).
+    """
+    return f"{transfer.tx_hash}#{int(transfer.log_index)}"
+
+
+def payment_refs_taken(transfer: Transfer) -> list[str]:
+    """The stored values that mean "this log already settled an invoice"."""
+    return [payment_ref(transfer), transfer.tx_hash]
+
+
+def ref_tx_hash(ref: str | None) -> str | None:
+    """The transaction hash inside a stored payment reference (for explorer links)."""
+    return ref.split("#", 1)[0] if ref else ref
+
+
+def ref_log_index(ref: str | None) -> int | None:
+    if not ref or "#" not in ref:
+        return None
+    try:
+        return int(ref.split("#", 1)[1])
+    except ValueError:
+        return None
+
+
 def parse_transfer_logs(logs: list[dict[str, Any]], *, token: str, pay_to: str) -> list[Transfer]:
     token_n = normalize_address(token)
     pay_n = normalize_address(pay_to)

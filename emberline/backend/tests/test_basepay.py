@@ -662,3 +662,19 @@ def test_demo_closes_a_configured_live_rail() -> None:
     )
     assert rail_enabled(settings) is False
     assert rail_closed_reason(settings) == DEMO_CHECKOUT_CLOSED
+
+
+def test_two_logs_of_one_transaction_settle_two_invoices(client, db) -> None:
+    """Audit 2026-11-11, desks-stripe-5: the bare tx hash was the payment key, so a batched
+    transaction paying two invoices settled one; the other buyer's USDC got no key."""
+    ids = [client.post("/api/public/pay/invoices", json={"plan": "solo"}).json()["id"] for _ in range(2)]
+    invoices = [db.get(BaseInvoice, i) for i in ids]
+    tx = "0x" + "ef" * 32
+    transfers = [Transfer(tx_hash=tx, frm="0x" + "aa" * 20, to=inv.pay_to, amount_raw=inv.amount_raw,
+                          block_number=10, log_index=n) for n, inv in enumerate(invoices)]
+    for inv, transfer in zip(invoices, transfers):
+        assert match_invoice(db, transfer) is inv
+        assert settle(db, inv, transfer).status == "paid"
+    assert match_invoice(db, transfers[0]) is None and match_invoice(db, transfers[1]) is None
+    view = client.get(f"/api/public/pay/invoices/{ids[1]}").json()
+    assert view["tx_hash"] == tx and view["log_index"] == 1 and view["explorer_tx"].endswith(tx)
