@@ -139,7 +139,9 @@ Metis 是经济中其他位置的可选分析层；Sortes 是可验证随机性�
 
 ## 本地 / 部署用例
 
-[`deploy.sh`](deploy.sh) 可用标志：`--list`、`--test`、`--build`、`--prod`。Compose 按证据台分文件。在 Metis 上未加 `--prod` 时自动叠加 `docker-compose.metis.yml`。
+在自己的电脑上运行任一证据台，使用测试支付和示例数据（需要 Docker；首次构建约一分钟）：`git clone https://github.com/alexar76/cite-desks.git && cd cite-desks && ./deploy.sh tideline`，脚本会打印地址，例如 http://127.0.0.1:8091/。
+
+[`deploy.sh`](deploy.sh) 可用标志：`--list`、`--test`、`--build`、`--prod`。Compose 按证据台分文件。在 Metis 主机上（存在 `metisnet` 网络）未加 `--prod` 时自动叠加 `docker-compose.metis.yml`；其他电脑上不会。
 
 | 用例 | 做法 |
 |------|------|

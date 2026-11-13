@@ -148,7 +148,9 @@ Metis — опциональный аналитик в другой части �
 
 ## Локально / юзкейсы деплоя
 
-Флаги [`deploy.sh`](deploy.sh): `--list`, `--test`, `--build`, `--prod`. Compose — per desk. Без `--prod` на Metis подхватывается `docker-compose.metis.yml`.
+Любой стол на своём компьютере, с тестовыми платежами и образцовыми данными (Docker; первая сборка около минуты): `git clone https://github.com/alexar76/cite-desks.git && cd cite-desks && ./deploy.sh tideline` — скрипт напечатает адрес, например http://127.0.0.1:8091/.
+
+Флаги [`deploy.sh`](deploy.sh): `--list`, `--test`, `--build`, `--prod`. Compose — per desk. Без `--prod` на хосте Metis (есть сеть `metisnet`) подхватывается `docker-compose.metis.yml`; на любом другом компьютере — нет.
 
 | Юзкейс | Как |
 |--------|-----|

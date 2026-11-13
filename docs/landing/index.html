@@ -146,6 +146,11 @@ h1 em { font-style: italic; color: var(--accent); }
 .card h2 { color: var(--c); }
 
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 8px 0 56px; }
+.try { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 28px; align-items: start; padding: 8px 0 56px; }
+.try h3 { margin: 10px 0 8px; }
+.try p { color: var(--dim); line-height: 1.55; margin: 0 0 10px; }
+.try pre { margin: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: rgba(0,0,0,.28); overflow-x: auto; font: 13px/1.65 var(--mono); color: var(--bone); }
+.try pre .c { color: var(--muted); }
 .split ul { margin: 8px 0 0; padding-left: 18px; color: var(--dim); line-height: 1.55; }
 h3 { font-family: var(--serif); font-size: 28px; font-weight: 400; margin: 8px 0; }
 
@@ -166,7 +171,7 @@ h3 { font-family: var(--serif); font-size: 28px; font-weight: 400; margin: 8px 0
   .card, .card:nth-child(n+4) { grid-column: span 1; }
 }
 @media (max-width: 720px) {
-  .split { grid-template-columns: 1fr; }
+  .split, .try { grid-template-columns: 1fr; }
   h1 { font-size: 42px; }
   .hero { min-height: auto; padding-top: 44px; }
   .family-scene { min-height: 340px; transform: scale(.9); margin: -24px -28px; }
@@ -224,7 +229,8 @@ h3 { font-family: var(--serif); font-size: 28px; font-weight: 400; margin: 8px 0
         <h1 data-i="h1">Evidence desks built to <a href="https://github.com/alexar76/cite-desks"><em>fork</em></a>, brand, and sell.</h1>
         <p class="lede" data-i="lede">Each desk turns attested ATLAS / GAIA data into a focused B2B workflow: watches, scheduled runs, cite packs and self-serve access. The public host stays a demo; operators supply their own origin, treasury and keys.</p>
         <div class="hero-actions">
-          <a class="btn btn-on" href="https://github.com/alexar76/cite-desks" data-i="cta_fork">Fork on GitHub</a>
+          <a class="btn btn-on" href="#try" data-i="cta_try">Run a desk in a minute</a>
+          <a class="btn" href="https://github.com/alexar76/cite-desks" data-i="cta_fork">Fork on GitHub</a>
           <a class="btn" href="https://emberlinedesk.com/" data-i="cta_ember">Explore Emberline</a>
           <a class="btn" href="https://smokeproof.modelmarket.dev/" data-i="cta_smoke">Open Smokeproof</a>
           <a class="btn" href="#desks" data-i="cta_use">See the desk family</a>
@@ -244,6 +250,23 @@ h3 { font-family: var(--serif); font-size: 28px; font-weight: 400; margin: 8px 0
         <div><b>01</b><span data-i="proof_output">citeable output</span></div>
       </div>
     </header>
+
+    <section class="try" id="try">
+      <div>
+        <div class="kicker" data-i="try_k">On your machine · no keys</div>
+        <h3 data-i="try_h">Run a desk in a minute</h3>
+        <p data-i="try_p">Docker is all it needs. Tideline (flood evidence, NL) starts on your own computer with its database, API and web app, on loopback, with test payments.</p>
+        <p data-i="try_p2">No domain, treasury or desk key: on a machine without our hosting network the deploy script runs the plain compose. About a minute with a cold build; any of the six desks works the same way.</p>
+      </div>
+      <pre><span class="c"># needs git and Docker</span>
+git clone https://github.com/alexar76/cite-desks.git
+cd cite-desks
+./deploy.sh tideline
+<span class="c"># tideline web: http://127.0.0.1:8091/</span>
+./deploy.sh --list      <span class="c"># the other five</span>
+<span class="c"># remove it</span>
+(cd tideline &amp;&amp; docker compose down -v)</pre>
+    </section>
 
     <section class="grid" id="desks">
       <article class="card" id="emberline">
@@ -318,6 +341,11 @@ h3 { font-family: var(--serif); font-size: 28px; font-weight: 400; margin: 8px 0
 const I18N = {
   en: {},  // filled from the markup below, so switching back to English restores it
   ru: {
+    cta_try: "Поднять деск за минуту",
+    try_k: "На своей машине · без ключей",
+    try_h: "Поднимите деск за минуту",
+    try_p: "Нужен только Docker. Tideline (доказательства по наводнениям, Нидерланды) запускается на вашем компьютере — база, API и веб-приложение, на loopback, с тестовыми платежами.",
+    try_p2: "Без домена, казначейства и ключа деска: на машине без нашей хостинговой сети скрипт запускает обычный compose. Около минуты с холодной сборкой; любой из шести десков поднимается так же.",
     demo: "Не продаётся. Касса закрыта. Живые вызовы хаба с лимитом.",
     demo_repo: "Форк · github.com/alexar76/cite-desks",
     nav_desks: "Дески",
@@ -350,6 +378,11 @@ const I18N = {
     foot: "На ATLAS / GAIA. Столы не держат спутники. Сторонний паттерн — копируйте, свой origin и ключ."
   },
   es: {
+    cta_try: "Arranca un desk en un minuto",
+    try_k: "En tu máquina · sin claves",
+    try_h: "Arranca un desk en un minuto",
+    try_p: "Solo necesita Docker. Tideline (evidencia de inundaciones, NL) arranca en tu propio ordenador con su base de datos, API y aplicación web, en loopback, con pagos de prueba.",
+    try_p2: "Sin dominio, tesorería ni clave del desk: en una máquina sin nuestra red de alojamiento el script ejecuta el compose normal. Alrededor de un minuto con la compilación en frío; los seis desks funcionan igual.",
     demo: "No está a la venta. El checkout está cerrado. Las invocaciones en vivo al hub tienen tope.",
     demo_repo: "Fork · github.com/alexar76/cite-desks",
     nav_desks: "Escritorios",
@@ -382,6 +415,11 @@ const I18N = {
     foot: "Impulsado por AIMarket ATLAS / GAIA. Los escritorios no operan satélites. Patrón de terceros — cópialo, pon tu propio origen y clave."
   },
   fr: {
+    cta_try: "Lancer un bureau en une minute",
+    try_k: "Sur votre machine · sans clés",
+    try_h: "Lancez un bureau en une minute",
+    try_p: "Docker suffit. Tideline (preuves d’inondation, NL) démarre sur votre propre ordinateur avec sa base, son API et son application web, sur loopback, avec des paiements de test.",
+    try_p2: "Sans domaine, trésorerie ni clé de bureau : sur une machine sans notre réseau d’hébergement, le script lance le compose simple. Environ une minute avec une construction à froid ; les six bureaux fonctionnent de la même façon.",
     demo: "Pas à vendre. Le checkout est fermé. Les appels live au hub sont plafonnés.",
     demo_repo: "Fork · github.com/alexar76/cite-desks",
     nav_desks: "Bureaux",
@@ -435,7 +473,7 @@ lang.addEventListener("change", apply);
 apply();
 
 if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-  const revealTargets = document.querySelectorAll(".proof-strip, .card, .split > div");
+  const revealTargets = document.querySelectorAll(".proof-strip, .card, .split > div, .try > *");
   revealTargets.forEach((node, index) => {
     node.classList.add("reveal");
     node.style.setProperty("--delay", `${(index % 3) * 80}ms`);

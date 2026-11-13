@@ -139,7 +139,9 @@ Sin saldo → fallo honesto; la cuota del plan no se consume; los rechazos no se
 
 ## Local / casos de despliegue
 
-Flags de [`deploy.sh`](deploy.sh): `--list`, `--test`, `--build`, `--prod`. Compose por escritorio. Sin `--prod` en Metis se aplica `docker-compose.metis.yml`.
+Cualquier escritorio en tu ordenador, con pagos de prueba y datos de ejemplo (Docker; la primera compilación tarda un minuto): `git clone https://github.com/alexar76/cite-desks.git && cd cite-desks && ./deploy.sh tideline` — imprime la dirección, p. ej. http://127.0.0.1:8091/.
+
+Flags de [`deploy.sh`](deploy.sh): `--list`, `--test`, `--build`, `--prod`. Compose por escritorio. Sin `--prod`, en el host de Metis (con la red `metisnet`) se aplica `docker-compose.metis.yml`; en cualquier otro ordenador, no.
 
 | Caso | Cómo |
 |------|------|

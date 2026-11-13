@@ -139,7 +139,9 @@ Solde épuisé → échec honnête ; le quota du plan n’est pas brûlé ; les 
 
 ## Local / cas de déploiement
 
-Flags de [`deploy.sh`](deploy.sh) : `--list`, `--test`, `--build`, `--prod`. Compose par bureau. Sans `--prod` sur Metis, `docker-compose.metis.yml` s’applique.
+N’importe quel bureau sur votre ordinateur, avec paiements de test et données d’exemple (Docker ; environ une minute à la première construction) : `git clone https://github.com/alexar76/cite-desks.git && cd cite-desks && ./deploy.sh tideline` — l’adresse s’affiche, p. ex. http://127.0.0.1:8091/.
+
+Flags de [`deploy.sh`](deploy.sh) : `--list`, `--test`, `--build`, `--prod`. Compose par bureau. Sans `--prod`, sur l’hôte Metis (réseau `metisnet` présent) `docker-compose.metis.yml` s’applique ; sur tout autre ordinateur, non.
 
 | Cas | Comment |
 |-----|---------|

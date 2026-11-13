@@ -196,6 +196,15 @@ Rooted here on purpose: every desk imports `desk_kernel` via `../../kernel`. A r
 
 ## Local
 
+Any desk on your own computer, with fixture payments and sample data (Docker; about a minute on the first build):
+
+```bash
+git clone https://github.com/alexar76/cite-desks.git && cd cite-desks
+./deploy.sh tideline        # prints the address, e.g. http://127.0.0.1:8091/
+```
+
+Tests:
+
 ```bash
 cd kernel && python -m pip install -e ".[dev]" && python -m pytest
 cd emberline && make test-api
@@ -218,7 +227,7 @@ Own frontend + backend trees.
 
 - Compose: [`emberline/docker-compose.yml`](emberline/docker-compose.yml) (builds `emberline/backend`, `emberline/frontend`)
 - Merchant overlay: `./deploy.sh emberline --prod` → also [`emberline/docker-compose.prod.yml`](emberline/docker-compose.prod.yml)
-- Metis public demo (no `--prod`): auto-adds [`emberline/docker-compose.metis.yml`](emberline/docker-compose.metis.yml) when that file exists (`DESK_MODE=demo`, `metisnet`)
+- Metis public demo (no `--prod`): auto-adds [`emberline/docker-compose.metis.yml`](emberline/docker-compose.metis.yml) when that file exists and the host has the `metisnet` network (`DESK_MODE=demo`); elsewhere the bare compose runs
 
 ### 2. One kernel desk alone
 

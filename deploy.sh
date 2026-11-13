@@ -78,10 +78,17 @@ if [[ -f docker-compose.host.yml ]]; then
   echo "using host overlay: $DESK/docker-compose.host.yml"
 fi
 # Metis public-demo overlay (DESK_MODE=demo, metisnet for metis-nginx). Prefer over a
-# bare compose when present and --prod was not requested.
+# bare compose when present and --prod was not requested — but only on the host that runs
+# metis-nginx: the overlay joins the external network metisnet and needs JWT_SECRET and
+# POSTGRES_PASSWORD, so on anyone else's machine it fails before a container starts. There
+# the bare compose runs the desk on loopback with fixture payments, which is what a fork wants.
 if [[ "$PROD" -eq 0 && -f docker-compose.metis.yml ]]; then
-  files+=(-f docker-compose.metis.yml)
-  echo "using metis overlay: $DESK/docker-compose.metis.yml"
+  if docker network inspect metisnet >/dev/null 2>&1; then
+    files+=(-f docker-compose.metis.yml)
+    echo "using metis overlay: $DESK/docker-compose.metis.yml"
+  else
+    echo "no metisnet network here: running $DESK locally (fixture payments), without the metis overlay"
+  fi
 fi
 args=(up -d)
 if [[ "$BUILD" -eq 1 ]]; then
@@ -105,4 +112,7 @@ sys.exit(0 if rail.get("open") and rail.get("settlement") == "scheduled" else 1)
 PY
 then
   echo "!! $DESK cannot take money unattended right now — fix the reason above" >&2
+fi
+if web="$(docker compose "${files[@]}" port web 80 2>/dev/null)" && [[ -n "$web" ]]; then
+  echo "$DESK web: http://$web/"
 fi
